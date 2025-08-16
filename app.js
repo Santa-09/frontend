@@ -29,7 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (window.BACKEND_URL && window.BACKEND_URL.trim() !== "") {
       return window.BACKEND_URL.replace(/\/+$/, "");
     }
-    return "https://backend-production-cdc5.up.railway.app";
+    return "https://chic-reprieve-production.up.railway.app";
   }
 
   const BASE_URL = computeBackendUrl();
