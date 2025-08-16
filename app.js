@@ -77,14 +77,7 @@
     btn.addEventListener("click", () => sendReply(q.id, input));
     input.addEventListener("keypress", (e) => { if (e.key === "Enter") sendReply(q.id, input); });
 
-    if (adminToken) {
-      const adminActions = card.querySelector("[data-admin-actions]");
-      const delBtn = document.createElement("button");
-      delBtn.textContent = "Delete";
-      delBtn.className = "text-xs text-red-600 hover:text-red-800 underline";
-      delBtn.addEventListener("click", () => deleteQuestion(q.id));
-      adminActions.appendChild(delBtn);
-    }
+    if (adminToken) renderAdminDelete(card, q.id);
 
     return card;
   }
@@ -93,6 +86,7 @@
     const li = document.createElement("div");
     li.className = "bg-gray-50 rounded-xl px-3 py-2 text-sm flex justify-between items-center";
     li.innerHTML = `<span>${escapeHTML(r.text)}</span>`;
+
     if (adminToken) {
       const delBtn = document.createElement("button");
       delBtn.textContent = "Delete";
@@ -100,6 +94,7 @@
       delBtn.addEventListener("click", () => deleteReply(qid, r.id));
       li.appendChild(delBtn);
     }
+
     repliesEl.appendChild(li);
   }
 
@@ -145,7 +140,7 @@
     }
   }
 
-  // SockJS
+  // SockJS Real-time
   let sock;
   function connectWS() {
     setStatus(false);
@@ -177,23 +172,51 @@
     appendReply(repliesEl, qid, reply);
   }
 
-  // Admin Modal
-  const adminModal = document.getElementById("adminModal");
-  const adminPasswordInput = document.getElementById("adminPasswordInput");
-  const adminCancelBtn = document.getElementById("adminCancelBtn");
-  const adminSubmitBtn = document.getElementById("adminSubmitBtn");
+  // Admin delete
+  async function deleteQuestion(qid) {
+    if (!adminToken) return alert("Not logged in");
+    if (!confirm("Delete this question?")) return;
+    try {
+      const res = await fetch(BASE_URL + `/api/questions/${qid}`, {
+        method: "DELETE",
+        headers: { Authorization: "Bearer " + adminToken },
+      });
+      if (!res.ok) throw new Error("Delete failed");
+      fetchQuestions();
+    } catch {
+      alert("❌ Failed to delete question");
+    }
+  }
 
-  adminLoginBtn.addEventListener("click", () => {
-    adminPasswordInput.value = "";
-    adminModal.classList.remove("hidden");
-    adminPasswordInput.focus();
-  });
+  async function deleteReply(qid, rid) {
+    if (!adminToken) return alert("Not logged in");
+    if (!confirm("Delete this reply?")) return;
+    try {
+      const res = await fetch(BASE_URL + `/api/questions/${qid}/replies/${rid}`, {
+        method: "DELETE",
+        headers: { Authorization: "Bearer " + adminToken },
+      });
+      if (!res.ok) throw new Error("Delete failed");
+      fetchQuestions();
+    } catch {
+      alert("❌ Failed to delete reply");
+    }
+  }
 
-  adminCancelBtn.addEventListener("click", () => adminModal.classList.add("hidden"));
+  // Render admin delete button for questions
+  function renderAdminDelete(card, qid) {
+    const adminActions = card.querySelector("[data-admin-actions]");
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "Delete";
+    delBtn.className = "text-xs text-red-600 hover:text-red-800 underline";
+    delBtn.addEventListener("click", () => deleteQuestion(qid));
+    adminActions.appendChild(delBtn);
+  }
 
-  adminSubmitBtn.addEventListener("click", async () => {
-    const password = adminPasswordInput.value.trim();
-    if (!password) return alert("Please enter password");
+  // Admin login
+  adminLoginBtn.addEventListener("click", async () => {
+    const password = prompt("Enter admin password:", "santanu@2006");
+    if (!password) return;
     try {
       const res = await fetch(BASE_URL + "/api/admin/login", {
         method: "POST",
@@ -201,20 +224,17 @@
         body: JSON.stringify({ password }),
       });
       if (!res.ok) throw new Error("Login failed");
-
       const data = await res.json();
       adminToken = data.token;
       localStorage.setItem("adminToken", adminToken);
       alert("✅ Admin logged in");
       clearAllBtn.classList.remove("hidden");
-      fetchQuestions();
-      adminModal.classList.add("hidden");
+      fetchQuestions(); // show delete buttons
     } catch {
       alert("❌ Admin login failed");
     }
   });
 
-  // Clear all
   clearAllBtn.addEventListener("click", async () => {
     if (!adminToken) return alert("Not logged in as admin");
     if (!confirm("Clear ALL questions and replies?")) return;
@@ -230,9 +250,6 @@
       alert("❌ Failed to clear questions");
     }
   });
-
-  // Admin persistence: hide/show clear button
-  if (adminToken) clearAllBtn.classList.remove("hidden");
 
   // Init
   fetchQuestions();
