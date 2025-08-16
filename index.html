@@ -17,15 +17,18 @@
 </head>
 <body class="bg-gray-50 text-gray-800 relative">
 
-  <!-- Admin Login Button -->
-  <button id="adminLoginBtn" class="bg-gray-800 text-white px-4 py-2 rounded-xl hover:bg-black text-sm absolute top-5 right-5">
-    Admin Login
-  </button>
+  <!-- Admin Buttons Container -->
+  <div class="fixed top-5 right-5 flex flex-col gap-2 z-50">
+    <!-- Admin Login Button -->
+    <button id="adminLoginBtn" class="bg-gray-800 text-white px-4 py-2 rounded-xl hover:bg-black text-sm">
+      Admin Login
+    </button>
 
-  <!-- Admin Clear All Button (hidden by default) -->
-  <button id="clearAllBtn" class="bg-red-600 text-white px-4 py-2 rounded-xl hover:bg-red-700 text-sm absolute top-16 right-5 hidden">
-    Clear All
-  </button>
+    <!-- Admin Clear All Button (hidden by default) -->
+    <button id="clearAllBtn" class="bg-red-600 text-white px-4 py-2 rounded-xl hover:bg-red-700 text-sm hidden">
+      Clear All
+    </button>
+  </div>
 
   <!-- Admin Login Modal -->
   <div id="adminModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
@@ -52,8 +55,10 @@
 
     <section class="card bg-white rounded-2xl p-6 md:p-8 mb-8">
       <div class="flex flex-col md:flex-row items-stretch gap-3">
-        <input id="questionInput" type="text" placeholder="What's your question?" class="flex-1 border border-gray-200 rounded-xl px-4 py-3 ring-focus ring-focus:ring-2 ring-offset-0 focus:border-blue-400">
-        <button id="askBtn" class="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold px-6 py-3 rounded-xl transition">Ask</button>
+        <input id="questionInput" type="text" placeholder="What's your question?" class="flex-1 border border-gray-200 rounded-xl px-4 py-3 ring-focus focus:border-blue-400">
+        <button id="askBtn" class="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold px-6 py-3 rounded-xl transition">
+          Ask
+        </button>
       </div>
       <p class="text-gray-400 text-sm mt-2">All questions and replies are anonymous</p>
     </section>
