@@ -29,7 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (window.BACKEND_URL && window.BACKEND_URL.trim() !== "") {
       return window.BACKEND_URL.replace(/\/+$/, "");
     }
-    return "https://web-production-1797e.up.railway.app";
+    return "backend-production-2d28.up.railway.app";
   }
 
   const BASE_URL = computeBackendUrl();
