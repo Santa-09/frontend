@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anonymous Classroom Q&A</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+  <style>
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in { animation: fadeIn 0.3s ease-out forwards; }
+    .question-card { transition: all 0.2s ease; }
+    .question-card:hover { transform: translateY(-2px); }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div class="max-w-3xl mx-auto p-4">
+    <header class="text-center mb-8">
+      <h1 class="text-3xl font-bold text-gray-800 mb-2">Anonymous Classroom Q&A</h1>
+      <p class="text-gray-600">Ask questions freely without revealing your identity</p>
+      <div class="mt-4 flex justify-center">
+        <span id="status" class="px-4 py-2 rounded-full text-sm bg-blue-100 text-blue-800 flex items-center">
+          <span class="w-2 h-2 rounded-full bg-blue-500 mr-2"></span>
+          Connecting...
+        </span>
+      </div>
+    </header>
+
+    <div class="bg-white rounded-xl shadow-md p-6 mb-6 fade-in">
+      <div class="flex gap-3">
+        <input id="questionInput" 
+               class="flex-1 border border-gray-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+               placeholder="What's your question?" 
+               autocomplete="off">
+        <button id="askBtn" class="px-5 py-3 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition">
+          Ask
+        </button>
+      </div>
+      <p class="text-sm text-gray-500 mt-2 px-1">All questions and replies are anonymous</p>
+    </div>
+
+    <div id="questions" class="space-y-4"></div>
+
+    <div id="emptyState" class="text-center py-12 fade-in">
+      <div class="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+        </svg>
+      </div>
+      <h3 class="text-lg font-medium text-gray-700">No questions yet</h3>
+      <p class="text-gray-500 mt-1">Be the first to ask something!</p>
+    </div>
+  </div>
+
+<script>
+let stompClient = null;
+let anon = "Anon_" + Math.floor(Math.random()*9000 + 1000);
+
+function getBackendUrl() {
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return window.location.protocol + '//' + window.location.host;
+  }
+  return window.location.protocol + '//api.' + window.location.hostname;
+}
+
+function setStatus(text, isConnected = false) {
+  const el = document.getElementById('status');
+  el.textContent = text;
+  el.className = `px-4 py-2 rounded-full text-sm flex items-center ${
+    isConnected ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+  }`;
+  el.querySelector('span').className = `w-2 h-2 rounded-full mr-2 ${
+    isConnected ? 'bg-green-500' : 'bg-blue-500'
+  }`;
+}
+
+function connect() {
+  const backendUrl = getBackendUrl();
+  console.log('Connecting to backend at:', backendUrl);
+  
+  const socket = new SockJS(backendUrl + '/ws');
+  stompClient = Stomp.over(socket);
+  
+  stompClient.connect({}, () => {
+    setStatus("Connected", true);
+    document.getElementById('emptyState').style.display = 'none';
+    
+    stompClient.subscribe('/topic/questions', (frame) => {
+      const q = JSON.parse(frame.body);
+      addQuestion(q);
+    });
+
+    stompClient.subscribe('/topic/replies', (frame) => {
+      const r = JSON.parse(frame.body);
+      addReply(r);
+    });
+  }, (error) => {
+    setStatus("Disconnected - trying again...");
+    setTimeout(connect, 3000);
+  });
+}
+
+function sendQuestion(text) {
+  if (!stompClient || !stompClient.connected) return;
+  stompClient.send('/app/question', {}, JSON.stringify({ user: anon, text }));
+}
+
+function addQuestion(q) {
+  const container = document.getElementById('questions');
+  document.getElementById('emptyState').style.display = 'none';
+  
+  if (document.getElementById('q-' + q.id)) return;
+  
+  const card = document.createElement('div');
+  card.className = "question-card bg-white rounded-xl shadow-md p-5 fade-in";
+  card.id = "q-" + q.id;
+  card.innerHTML = `
+    <div class="flex justify-between items-start gap-4">
+      <div class="flex-1 min-w-0">
+        <div class="text-xs text-gray-500 mb-1">${new Date(q.timestamp).toLocaleString()}</div>
+        <div class="font-medium text-gray-700">${q.user}</div>
+        <div class="mt-2 text-gray-800 break-words">${escapeHtml(q.text)}</div>
+      </div>
+      <button class="reply-btn px-3 py-1.5 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 transition text-sm" 
+              data-qid="${q.id}">
+        Reply
+      </button>
+    </div>
+    <div class="mt-3 space-y-2" id="replies-${q.id}"></div>
+  `;
+  container.prepend(card);
+  
+  card.querySelector('.reply-btn').addEventListener('click', (e) => {
+    const qid = e.target.getAttribute('data-qid');
+    const text = prompt("Your reply:");
+    if (text && text.trim()) {
+      stompClient.send('/app/reply', {}, JSON.stringify({ qid, user: anon, text: text.trim() }));
+    }
+  });
+}
+
+function addReply(r) {
+  const replies = document.getElementById('replies-' + r.qid);
+  if (!replies) return;
+  
+  const div = document.createElement('div');
+  div.className = "bg-gray-50 rounded-lg p-3 border border-gray-100 fade-in";
+  div.innerHTML = `
+    <div class="text-xs text-gray-500">${new Date(r.timestamp).toLocaleString()}</div>
+    <div class="font-medium text-gray-700">${r.user}</div>
+    <div class="mt-1 text-gray-800 break-words">${escapeHtml(r.text)}</div>
+  `;
+  replies.appendChild(div);
+}
+
+function escapeHtml(s) {
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+document.getElementById('askBtn').addEventListener('click', () => {
+  const input = document.getElementById('questionInput');
+  const val = input.value.trim();
+  if (val) {
+    sendQuestion(val);
+    input.value = "";
+  }
+});
+
+document.getElementById('questionInput').addEventListener('keypress', (e) => {
+  if (e.key === 'Enter') {
+    document.getElementById('askBtn').click();
+  }
+});
+
+connect();
+</script>
+</body>
+</html>
