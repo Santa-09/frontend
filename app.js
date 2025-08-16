@@ -1,4 +1,4 @@
-(function() {
+document.addEventListener("DOMContentLoaded", () => {
   const statusEl = document.getElementById("status");
   const statusText = document.getElementById("statusText");
   const qInput = document.getElementById("questionInput");
@@ -193,4 +193,4 @@
 
   fetchQuestions();
   connectWS();
-})();
+});
