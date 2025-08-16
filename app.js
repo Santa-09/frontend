@@ -74,9 +74,13 @@
     const input = card.querySelector("input");
     const btn = card.querySelector("button");
 
+    // Send reply
     btn.addEventListener("click", () => sendReply(q.id, input));
-    input.addEventListener("keypress", (e) => { if (e.key === "Enter") sendReply(q.id, input); });
+    input.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") sendReply(q.id, input);
+    });
 
+    // ONLY admin can see delete buttons
     if (adminToken) renderAdminDelete(card, q.id, repliesEl, q.replies || []);
 
     return card;
@@ -140,7 +144,7 @@
     }
   }
 
-  // SockJS
+  // SockJS real-time
   let sock;
   function connectWS() {
     setStatus(false);
@@ -174,7 +178,7 @@
 
   // Admin delete
   async function deleteQuestion(qid) {
-    if (!adminToken) return alert("Not logged in");
+    if (!adminToken) return alert("Not logged in as admin");
     if (!confirm("Delete this question?")) return;
     try {
       const res = await fetch(BASE_URL + `/api/questions/${qid}`, {
@@ -189,7 +193,7 @@
   }
 
   async function deleteReply(qid, rid) {
-    if (!adminToken) return alert("Not logged in");
+    if (!adminToken) return alert("Not logged in as admin");
     if (!confirm("Delete this reply?")) return;
     try {
       const res = await fetch(BASE_URL + `/api/questions/${qid}/replies/${rid}`, {
@@ -204,17 +208,19 @@
   }
 
   function renderAdminDelete(card, qid, repliesEl, repliesList) {
+    // Delete question button
     const adminActions = card.querySelector("[data-admin-actions]");
+    adminActions.innerHTML = "";
     const delBtn = document.createElement("button");
     delBtn.textContent = "Delete";
     delBtn.className = "text-xs text-red-600 hover:text-red-800 underline";
     delBtn.addEventListener("click", () => deleteQuestion(qid));
     adminActions.appendChild(delBtn);
 
-    // Add delete buttons for existing replies
+    // Delete buttons for replies
     repliesList.forEach(r => {
       const li = [...repliesEl.children].find(l => l.textContent.includes(r.text));
-      if (li) {
+      if (li && !li.querySelector("button")) {
         const btn = document.createElement("button");
         btn.textContent = "Delete";
         btn.className = "text-xs text-red-600 hover:text-red-800 ml-2 underline";
@@ -230,16 +236,16 @@
   const adminCancelBtn = document.getElementById("adminCancelBtn");
   const adminSubmitBtn = document.getElementById("adminSubmitBtn");
 
-  adminLoginBtn.addEventListener("click", () => {
+  function showAdminModal() {
     adminPasswordInput.value = "";
     adminModal.classList.remove("hidden");
     adminPasswordInput.focus();
-  });
+  }
 
+  adminLoginBtn.addEventListener("click", showAdminModal);
   adminCancelBtn.addEventListener("click", () => adminModal.classList.add("hidden"));
 
-  adminSubmitBtn.addEventListener("click", async () => {
-    const password = adminPasswordInput.value.trim();
+  async function loginAdmin(password) {
     if (!password) return alert("Please enter password");
     try {
       const res = await fetch(BASE_URL + "/api/admin/login", {
@@ -248,7 +254,6 @@
         body: JSON.stringify({ password }),
       });
       if (!res.ok) throw new Error("Login failed");
-
       const data = await res.json();
       adminToken = data.token;
       localStorage.setItem("adminToken", adminToken);
@@ -259,9 +264,11 @@
     } catch {
       alert("❌ Admin login failed");
     }
-  });
+  }
 
-  // Clear all
+  adminSubmitBtn.addEventListener("click", () => loginAdmin(adminPasswordInput.value.trim()));
+
+  // Clear all questions
   clearAllBtn.addEventListener("click", async () => {
     if (!adminToken) return alert("Not logged in as admin");
     if (!confirm("Clear ALL questions and replies?")) return;
@@ -278,7 +285,7 @@
     }
   });
 
-  // Admin persistence: show clear button if already logged in
+  // Show admin UI if token exists
   if (adminToken) clearAllBtn.classList.remove("hidden");
 
   // Init
