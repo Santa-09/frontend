@@ -5,6 +5,8 @@
   const askBtn = document.getElementById("askBtn");
   const qList = document.getElementById("questions");
   const emptyEl = document.getElementById("listEmpty");
+  const adminLoginBtn = document.getElementById("adminLoginBtn");
+  const clearAllBtn = document.getElementById("clearAllBtn");
 
   let isAdmin = false;
 
@@ -14,19 +16,14 @@
     if (key === window.ADMIN_KEY) {
       isAdmin = true;
       alert("Admin access granted (anonymous).");
+      clearAllBtn.classList.remove("hidden");
+      fetchQuestions();
     } else {
       alert("Incorrect key.");
     }
   }
 
-  // Call adminLogin once at start if needed
-  // Or attach to a hidden button/shortcut
-  document.addEventListener("keydown", (e) => {
-    // Press Ctrl+Shift+A to login as admin
-    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "a") {
-      adminLogin();
-    }
-  });
+  adminLoginBtn.addEventListener("click", adminLogin);
 
   function computeBackendUrl() {
     if (window.BACKEND_URL && window.BACKEND_URL.trim() !== "") {
@@ -149,7 +146,6 @@
     }[m]));
   }
 
-  // Ask handler
   askBtn.addEventListener("click", async () => {
     const text = qInput.value.trim();
     if (!text) return;
@@ -186,16 +182,15 @@
   function addReply(qid, reply) { fetchQuestions(); }
 
   // CLEAR ALL (Admin only)
-  window.clearAllQuestions = async () => {
+  clearAllBtn.addEventListener("click", async () => {
     if (!isAdmin) return alert("Admin only");
     if (!confirm("Delete all questions and replies?")) return;
     try {
       await fetch(BASE_URL + "/api/questions", { method: "DELETE" });
       fetchQuestions();
     } catch { alert("Failed to clear all."); }
-  };
+  });
 
-  // Init
   fetchQuestions();
   connectWS();
 })();
