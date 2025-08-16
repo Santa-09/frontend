@@ -15,7 +15,7 @@
 
   const BASE_URL = computeBackendUrl();
   // WebSocket URL fix for production
-  const WS_URL = BASE_URL.replace(/^http/, "ws") + "/ws";
+  const WS_URL = BASE_URL + "/ws";
 
   function setStatus(connected) {
     if (connected) {
