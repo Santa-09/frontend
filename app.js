@@ -7,15 +7,14 @@
   const qList = document.getElementById("questions");
   const emptyEl = document.getElementById("listEmpty");
 
-  function computeBackendUrl() {
+ function computeBackendUrl() {
     // 1) Explicit override via config.js
     if (window.BACKEND_URL && window.BACKEND_URL.trim() !== "") {
-      return window.BACKEND_URL.replace(/\/+$/, "");
+        return window.BACKEND_URL.replace(/\/+$/, "");
     }
     // 2) Local dev fallback
-    return "https://web-production-1797e.up.railway.app
-";
-  }
+    return "https://web-production-1797e.up.railway.app";
+}
 
   const BASE_URL = computeBackendUrl();
   const WS_URL = BASE_URL + "/ws";
