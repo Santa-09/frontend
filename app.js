@@ -16,7 +16,7 @@
   // ---- Backend URLs ----
   const BASE_URL =
     window.BACKEND_URL || "https://chic-reprieve-production.up.railway.app";
-  // ✅ FIXED: SockJS must use https:// not wss://
+  // ✅ SockJS should point to https://, not wss://
   const WS_URL = BASE_URL + "/ws";
 
   function setStatus(connected) {
@@ -79,6 +79,7 @@
       li.className =
         "bg-gray-50 rounded-xl px-3 py-2 text-sm flex justify-between items-center";
       li.innerHTML = `<span>${escapeHTML(r.text)}</span>`;
+      // 🔒 show delete only if admin is logged in
       if (adminToken) {
         const delBtn = document.createElement("button");
         delBtn.textContent = "Delete";
@@ -109,7 +110,7 @@
       }
     });
 
-    // --- admin delete for question
+    // 🔒 show delete button for question only if admin
     if (adminToken) {
       const adminActions = card.querySelector("[data-admin-actions]");
       const delBtn = document.createElement("button");
@@ -124,9 +125,7 @@
 
   function escapeHTML(str) {
     return str.replace(/[&<>"']/g, (m) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[
-        m
-      ])
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[m])
     );
   }
 
@@ -182,7 +181,7 @@
 
   // --------- Admin Functions ----------
   async function deleteQuestion(qid) {
-    if (!adminToken) return alert("Not logged in");
+    if (!adminToken) return alert("Not logged in as admin");
     if (!confirm("Delete this question?")) return;
     try {
       const res = await fetch(BASE_URL + `/api/questions/${qid}`, {
@@ -197,7 +196,7 @@
   }
 
   async function deleteReply(qid, rid) {
-    if (!adminToken) return alert("Not logged in");
+    if (!adminToken) return alert("Not logged in as admin");
     if (!confirm("Delete this reply?")) return;
     try {
       const res = await fetch(BASE_URL + `/api/questions/${qid}/replies/${rid}`, {
@@ -227,7 +226,7 @@
       localStorage.setItem("adminToken", adminToken);
       alert("✅ Admin logged in");
       clearAllBtn.classList.remove("hidden");
-      fetchQuestions();
+      fetchQuestions(); // refresh so delete buttons appear
     } catch {
       alert("❌ Admin login failed");
     }
