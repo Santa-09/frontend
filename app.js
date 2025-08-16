@@ -10,14 +10,19 @@
   const adminLoginBtn = document.getElementById("adminLoginBtn");
   const clearAllBtn = document.getElementById("clearAllBtn");
 
+  // Admin modal elements
+  const adminModal = document.getElementById("adminModal");
+  const adminPasswordInput = document.getElementById("adminPasswordInput");
+  const adminCancelBtn = document.getElementById("adminCancelBtn");
+  const adminSubmitBtn = document.getElementById("adminSubmitBtn");
+
   // keep admin login token
   let adminToken = localStorage.getItem("adminToken") || null;
 
   // ---- Backend URLs ----
   const BASE_URL =
     window.BACKEND_URL || "https://chic-reprieve-production.up.railway.app";
-  // ✅ SockJS should point to https://, not wss://
-  const WS_URL = BASE_URL + "/ws";
+  const WS_URL = BASE_URL + "/ws"; // ✅ SockJS works with https://
 
   function setStatus(connected) {
     if (connected) {
@@ -79,7 +84,6 @@
       li.className =
         "bg-gray-50 rounded-xl px-3 py-2 text-sm flex justify-between items-center";
       li.innerHTML = `<span>${escapeHTML(r.text)}</span>`;
-      // 🔒 show delete only if admin is logged in
       if (adminToken) {
         const delBtn = document.createElement("button");
         delBtn.textContent = "Delete";
@@ -110,7 +114,7 @@
       }
     });
 
-    // 🔒 show delete button for question only if admin
+    // --- admin delete for question
     if (adminToken) {
       const adminActions = card.querySelector("[data-admin-actions]");
       const delBtn = document.createElement("button");
@@ -210,10 +214,20 @@
     }
   }
 
-  // login
-  adminLoginBtn.addEventListener("click", async () => {
-    const password = prompt("Enter admin password:", window.ADMIN_KEY || "");
-    if (!password) return;
+  // --- Admin Login Modal Logic ---
+  adminLoginBtn.addEventListener("click", () => {
+    adminPasswordInput.value = "";
+    adminModal.classList.remove("hidden");
+    adminPasswordInput.focus();
+  });
+
+  adminCancelBtn.addEventListener("click", () => {
+    adminModal.classList.add("hidden");
+  });
+
+  adminSubmitBtn.addEventListener("click", async () => {
+    const password = adminPasswordInput.value.trim();
+    if (!password) return alert("Please enter password");
     try {
       const res = await fetch(BASE_URL + "/api/admin/login", {
         method: "POST",
@@ -226,7 +240,8 @@
       localStorage.setItem("adminToken", adminToken);
       alert("✅ Admin logged in");
       clearAllBtn.classList.remove("hidden");
-      fetchQuestions(); // refresh so delete buttons appear
+      fetchQuestions();
+      adminModal.classList.add("hidden"); // hide modal after success
     } catch {
       alert("❌ Admin login failed");
     }
