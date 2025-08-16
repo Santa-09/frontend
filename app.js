@@ -10,12 +10,14 @@
   const adminLoginBtn = document.getElementById("adminLoginBtn");
   const clearAllBtn = document.getElementById("clearAllBtn");
 
-  let adminToken = localStorage.getItem("adminToken") || null;
+  // --- Admin token ---
+  let adminToken = null;
+  localStorage.removeItem("adminToken"); // clear token on reload
 
-  // Backend URLs
+  // ---- Backend URLs ----
   const BASE_URL =
     window.BACKEND_URL || "https://chic-reprieve-production.up.railway.app";
-  const WS_URL = BASE_URL + "/ws";
+  const WS_URL = BASE_URL + "/ws"; // SockJS over HTTPS
 
   function setStatus(connected) {
     if (connected) {
@@ -29,7 +31,7 @@
     }
   }
 
-  // Fetch questions from backend
+  // --------- Load + Render Questions ----------
   async function fetchQuestions() {
     try {
       const res = await fetch(BASE_URL + "/api/questions");
@@ -71,9 +73,11 @@
       </div>
     `;
 
+    // --- render replies
     const repliesEl = card.querySelector("[data-replies]");
     (q.replies || []).forEach((r) => appendReply(repliesEl, q.id, r));
 
+    // --- reply handler
     const input = card.querySelector("input");
     const btn = card.querySelector("button");
     btn.addEventListener("click", async () => {
@@ -92,7 +96,7 @@
       }
     });
 
-    // Admin-only delete button for question
+    // --- admin delete for question
     if (adminToken) {
       const adminActions = card.querySelector("[data-admin-actions]");
       const delBtn = document.createElement("button");
@@ -123,11 +127,13 @@
 
   function escapeHTML(str) {
     return str.replace(/[&<>"']/g, (m) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[m])
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[
+        m
+      ])
     );
   }
 
-  // Ask a question
+  // --------- Ask a Question ----------
   askBtn.addEventListener("click", async () => {
     const text = qInput.value.trim();
     if (!text) return;
@@ -144,7 +150,7 @@
     }
   });
 
-  // Real-time via SockJS
+  // --------- Real-time (SockJS) ----------
   let sock;
   function connectWS() {
     setStatus(false);
@@ -174,13 +180,16 @@
   }
 
   function addReply(qid, reply) {
-    const card = [...qList.children].find(el => el.dataset.qid === qid);
+    const card = [...qList.children].find(
+      (el) => el.dataset.qid === qid
+    );
     if (!card) return fetchQuestions();
+
     const repliesEl = card.querySelector("[data-replies]");
     appendReply(repliesEl, qid, reply);
   }
 
-  // Admin functions
+  // --------- Admin Functions ----------
   async function deleteQuestion(qid) {
     if (!adminToken) return alert("Not logged in");
     if (!confirm("Delete this question?")) return;
@@ -211,7 +220,7 @@
     }
   }
 
-  // Admin login modal
+  // --------- Admin Login / Modal ----------
   const adminModal = document.getElementById("adminModal");
   const adminPasswordInput = document.getElementById("adminPasswordInput");
   const adminCancelBtn = document.getElementById("adminCancelBtn");
@@ -241,17 +250,17 @@
 
       const data = await res.json();
       adminToken = data.token;
-      localStorage.setItem("adminToken", adminToken);
 
       alert("✅ Admin logged in");
       clearAllBtn.classList.remove("hidden");
-      fetchQuestions();
+      fetchQuestions(); // refresh to show delete buttons
       adminModal.classList.add("hidden");
     } catch {
       alert("❌ Admin login failed");
     }
   });
 
+  // clear
   clearAllBtn.addEventListener("click", async () => {
     if (!adminToken) return alert("Not logged in as admin");
     if (!confirm("Clear ALL questions and replies?")) return;
@@ -268,7 +277,7 @@
     }
   });
 
-  // Init
+  // --------- Init ----------
   fetchQuestions();
   connectWS();
 })();
