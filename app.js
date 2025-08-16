@@ -1,4 +1,3 @@
-// frontend/app.js
 (function() {
   const statusEl = document.getElementById("status");
   const statusText = document.getElementById("statusText");
@@ -7,17 +6,16 @@
   const qList = document.getElementById("questions");
   const emptyEl = document.getElementById("listEmpty");
 
- function computeBackendUrl() {
-    // 1) Explicit override via config.js
+  function computeBackendUrl() {
     if (window.BACKEND_URL && window.BACKEND_URL.trim() !== "") {
-        return window.BACKEND_URL.replace(/\/+$/, "");
+      return window.BACKEND_URL.replace(/\/+$/, "");
     }
-    // 2) Local dev fallback
     return "https://web-production-1797e.up.railway.app";
-}
+  }
 
   const BASE_URL = computeBackendUrl();
-  const WS_URL = BASE_URL + "/ws";
+  // WebSocket URL fix for production
+  const WS_URL = BASE_URL.replace(/^http/, "ws") + "/ws";
 
   function setStatus(connected) {
     if (connected) {
@@ -70,7 +68,6 @@
       </div>
     `;
 
-    // render replies
     const repliesEl = card.querySelector("[data-replies]");
     (q.replies || []).forEach(r => {
       const li = document.createElement("div");
@@ -79,7 +76,6 @@
       repliesEl.appendChild(li);
     });
 
-    // reply handler
     const input = card.querySelector("input");
     const btn = card.querySelector("button");
     btn.addEventListener("click", async () => {
@@ -107,7 +103,6 @@
     }[m]));
   }
 
-  // Ask handler
   askBtn.addEventListener("click", async () => {
     const text = qInput.value.trim();
     if (!text) return;
@@ -124,7 +119,6 @@
     }
   });
 
-  // Real-time via SockJS
   let sock;
   function connectWS() {
     setStatus(false);
@@ -143,7 +137,6 @@
       };
       sock.onclose = () => {
         setStatus(false);
-        // Reconnect after delay
         setTimeout(connectWS, 1500);
       };
     } catch (e) {
@@ -159,20 +152,9 @@
   }
 
   function addReply(qid, reply) {
-    // Find the card by walking the DOM (simple approach)
-    const cards = Array.from(qList.children);
-    for (const card of cards) {
-      const title = card.querySelector("p.text-lg");
-      if (!title) continue;
-      // not storing ids in DOM; instead, patch data by fetching when needed
-      // Simpler: if reply arrives, just refresh that question block by re-fetching list.
-      // For a small app this is fine.
-    }
-    // Refresh list to keep it consistent
     fetchQuestions();
   }
 
-  // Init
   fetchQuestions();
   connectWS();
 })();
