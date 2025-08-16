@@ -77,14 +77,7 @@
     btn.addEventListener("click", () => sendReply(q.id, input));
     input.addEventListener("keypress", (e) => { if (e.key === "Enter") sendReply(q.id, input); });
 
-    if (adminToken) {
-      const adminActions = card.querySelector("[data-admin-actions]");
-      const delBtn = document.createElement("button");
-      delBtn.textContent = "Delete";
-      delBtn.className = "text-xs text-red-600 hover:text-red-800 underline";
-      delBtn.addEventListener("click", () => deleteQuestion(q.id));
-      adminActions.appendChild(delBtn);
-    }
+    if (adminToken) renderAdminDelete(card, q.id, repliesEl, q.replies || []);
 
     return card;
   }
@@ -93,6 +86,7 @@
     const li = document.createElement("div");
     li.className = "bg-gray-50 rounded-xl px-3 py-2 text-sm flex justify-between items-center";
     li.innerHTML = `<span>${escapeHTML(r.text)}</span>`;
+
     if (adminToken) {
       const delBtn = document.createElement("button");
       delBtn.textContent = "Delete";
@@ -100,6 +94,7 @@
       delBtn.addEventListener("click", () => deleteReply(qid, r.id));
       li.appendChild(delBtn);
     }
+
     repliesEl.appendChild(li);
   }
 
@@ -177,7 +172,59 @@
     appendReply(repliesEl, qid, reply);
   }
 
-  // Admin Modal
+  // Admin delete
+  async function deleteQuestion(qid) {
+    if (!adminToken) return alert("Not logged in");
+    if (!confirm("Delete this question?")) return;
+    try {
+      const res = await fetch(BASE_URL + `/api/questions/${qid}`, {
+        method: "DELETE",
+        headers: { Authorization: "Bearer " + adminToken },
+      });
+      if (!res.ok) throw new Error("Delete failed");
+      fetchQuestions();
+    } catch {
+      alert("❌ Failed to delete question");
+    }
+  }
+
+  async function deleteReply(qid, rid) {
+    if (!adminToken) return alert("Not logged in");
+    if (!confirm("Delete this reply?")) return;
+    try {
+      const res = await fetch(BASE_URL + `/api/questions/${qid}/replies/${rid}`, {
+        method: "DELETE",
+        headers: { Authorization: "Bearer " + adminToken },
+      });
+      if (!res.ok) throw new Error("Delete failed");
+      fetchQuestions();
+    } catch {
+      alert("❌ Failed to delete reply");
+    }
+  }
+
+  function renderAdminDelete(card, qid, repliesEl, repliesList) {
+    const adminActions = card.querySelector("[data-admin-actions]");
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "Delete";
+    delBtn.className = "text-xs text-red-600 hover:text-red-800 underline";
+    delBtn.addEventListener("click", () => deleteQuestion(qid));
+    adminActions.appendChild(delBtn);
+
+    // Add delete buttons for existing replies
+    repliesList.forEach(r => {
+      const li = [...repliesEl.children].find(l => l.textContent.includes(r.text));
+      if (li) {
+        const btn = document.createElement("button");
+        btn.textContent = "Delete";
+        btn.className = "text-xs text-red-600 hover:text-red-800 ml-2 underline";
+        btn.addEventListener("click", () => deleteReply(qid, r.id));
+        li.appendChild(btn);
+      }
+    });
+  }
+
+  // Admin modal
   const adminModal = document.getElementById("adminModal");
   const adminPasswordInput = document.getElementById("adminPasswordInput");
   const adminCancelBtn = document.getElementById("adminCancelBtn");
@@ -231,7 +278,7 @@
     }
   });
 
-  // Admin persistence: hide/show clear button
+  // Admin persistence: show clear button if already logged in
   if (adminToken) clearAllBtn.classList.remove("hidden");
 
   // Init
