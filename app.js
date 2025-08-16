@@ -74,13 +74,8 @@
     const input = card.querySelector("input");
     const btn = card.querySelector("button");
 
-    // Add reply click
     btn.addEventListener("click", () => sendReply(q.id, input));
-
-    // Add reply enter key
-    input.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") sendReply(q.id, input);
-    });
+    input.addEventListener("keypress", (e) => { if (e.key === "Enter") sendReply(q.id, input); });
 
     if (adminToken) {
       const adminActions = card.querySelector("[data-admin-actions]");
@@ -114,13 +109,9 @@
     );
   }
 
-  // Ask question click
+  // Ask question
   askBtn.addEventListener("click", () => sendQuestion());
-
-  // Ask question enter key
-  qInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") sendQuestion();
-  });
+  qInput.addEventListener("keypress", (e) => { if (e.key === "Enter") sendQuestion(); });
 
   async function sendQuestion() {
     const text = qInput.value.trim();
@@ -154,7 +145,7 @@
     }
   }
 
-  // SockJS Real-time
+  // SockJS
   let sock;
   function connectWS() {
     setStatus(false);
@@ -186,36 +177,62 @@
     appendReply(repliesEl, qid, reply);
   }
 
-  // Admin functions
-  async function deleteQuestion(qid) {
-    if (!adminToken) return alert("Not logged in");
-    if (!confirm("Delete this question?")) return;
-    try {
-      const res = await fetch(BASE_URL + `/api/questions/${qid}`, {
-        method: "DELETE",
-        headers: { Authorization: "Bearer " + adminToken },
-      });
-      if (!res.ok) throw new Error("Delete failed");
-      fetchQuestions();
-    } catch {
-      alert("❌ Failed to delete question");
-    }
-  }
+  // Admin Modal
+  const adminModal = document.getElementById("adminModal");
+  const adminPasswordInput = document.getElementById("adminPasswordInput");
+  const adminCancelBtn = document.getElementById("adminCancelBtn");
+  const adminSubmitBtn = document.getElementById("adminSubmitBtn");
 
-  async function deleteReply(qid, rid) {
-    if (!adminToken) return alert("Not logged in");
-    if (!confirm("Delete this reply?")) return;
+  adminLoginBtn.addEventListener("click", () => {
+    adminPasswordInput.value = "";
+    adminModal.classList.remove("hidden");
+    adminPasswordInput.focus();
+  });
+
+  adminCancelBtn.addEventListener("click", () => adminModal.classList.add("hidden"));
+
+  adminSubmitBtn.addEventListener("click", async () => {
+    const password = adminPasswordInput.value.trim();
+    if (!password) return alert("Please enter password");
     try {
-      const res = await fetch(BASE_URL + `/api/questions/${qid}/replies/${rid}`, {
-        method: "DELETE",
+      const res = await fetch(BASE_URL + "/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      if (!res.ok) throw new Error("Login failed");
+
+      const data = await res.json();
+      adminToken = data.token;
+      localStorage.setItem("adminToken", adminToken);
+      alert("✅ Admin logged in");
+      clearAllBtn.classList.remove("hidden");
+      fetchQuestions();
+      adminModal.classList.add("hidden");
+    } catch {
+      alert("❌ Admin login failed");
+    }
+  });
+
+  // Clear all
+  clearAllBtn.addEventListener("click", async () => {
+    if (!adminToken) return alert("Not logged in as admin");
+    if (!confirm("Clear ALL questions and replies?")) return;
+    try {
+      const res = await fetch(BASE_URL + "/api/admin/clear", {
+        method: "POST",
         headers: { Authorization: "Bearer " + adminToken },
       });
-      if (!res.ok) throw new Error("Delete failed");
+      if (!res.ok) throw new Error("Clear failed");
+      alert("✅ All questions cleared");
       fetchQuestions();
     } catch {
-      alert("❌ Failed to delete reply");
+      alert("❌ Failed to clear questions");
     }
-  }
+  });
+
+  // Admin persistence: hide/show clear button
+  if (adminToken) clearAllBtn.classList.remove("hidden");
 
   // Init
   fetchQuestions();
