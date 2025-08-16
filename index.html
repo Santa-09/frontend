@@ -15,7 +15,18 @@
     .ring-focus:focus{ outline: none; box-shadow: 0 0 0 4px rgba(43,92,255,.25); }
   </style>
 </head>
-<body class="bg-gray-50 text-gray-800">
+<body class="bg-gray-50 text-gray-800 relative">
+
+  <!-- Admin Login Button -->
+  <button id="adminLoginBtn" class="bg-gray-800 text-white px-4 py-2 rounded-xl hover:bg-black text-sm absolute top-5 right-5">
+    Admin Login
+  </button>
+
+  <!-- Admin Clear All Button (hidden by default) -->
+  <button id="clearAllBtn" class="bg-red-600 text-white px-4 py-2 rounded-xl hover:bg-red-700 text-sm absolute top-16 right-5 hidden">
+    Clear All
+  </button>
+
   <div class="max-w-4xl mx-auto px-4 py-10">
     <header class="text-center mb-10">
       <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight">Anonymous Classroom Q&amp;A</h1>
