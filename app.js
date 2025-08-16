@@ -6,6 +6,28 @@
   const qList = document.getElementById("questions");
   const emptyEl = document.getElementById("listEmpty");
 
+  let isAdmin = false;
+
+  // --- ADMIN LOGIN ---
+  function adminLogin() {
+    const key = prompt("Enter admin key:");
+    if (key === window.ADMIN_KEY) {
+      isAdmin = true;
+      alert("Admin access granted (anonymous).");
+    } else {
+      alert("Incorrect key.");
+    }
+  }
+
+  // Call adminLogin once at start if needed
+  // Or attach to a hidden button/shortcut
+  document.addEventListener("keydown", (e) => {
+    // Press Ctrl+Shift+A to login as admin
+    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "a") {
+      adminLogin();
+    }
+  });
+
   function computeBackendUrl() {
     if (window.BACKEND_URL && window.BACKEND_URL.trim() !== "") {
       return window.BACKEND_URL.replace(/\/+$/, "");
@@ -14,7 +36,6 @@
   }
 
   const BASE_URL = computeBackendUrl();
-  // WebSocket URL fix for production
   const WS_URL = BASE_URL + "/ws";
 
   function setStatus(connected) {
@@ -60,6 +81,7 @@
           <p class="text-lg font-semibold">${escapeHTML(q.text)}</p>
           <p class="text-xs text-gray-400 mt-1">${date.toLocaleString()}</p>
         </div>
+        <div class="flex gap-2"></div>
       </div>
       <div class="mt-4 space-y-2" data-replies></div>
       <div class="mt-4 flex gap-2">
@@ -71,8 +93,20 @@
     const repliesEl = card.querySelector("[data-replies]");
     (q.replies || []).forEach(r => {
       const li = document.createElement("div");
-      li.className = "bg-gray-50 rounded-xl px-3 py-2 text-sm";
-      li.textContent = r.text;
+      li.className = "bg-gray-50 rounded-xl px-3 py-2 text-sm flex justify-between items-center";
+      li.innerHTML = `<span>${r.text}</span>`;
+      if (isAdmin) {
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "Delete";
+        delBtn.className = "ml-2 text-red-500 hover:underline text-xs";
+        delBtn.addEventListener("click", async () => {
+          try {
+            await fetch(BASE_URL + `/api/questions/${q.id}/replies/${r.id}`, { method: "DELETE" });
+            fetchQuestions();
+          } catch { alert("Failed to delete reply."); }
+        });
+        li.appendChild(delBtn);
+      }
       repliesEl.appendChild(li);
     });
 
@@ -89,10 +123,22 @@
         });
         if (!res.ok) throw new Error("Reply failed");
         input.value = "";
-      } catch (e) {
-        alert("Failed to send reply. Check connection.");
-      }
+      } catch { alert("Failed to send reply."); }
     });
+
+    if (isAdmin) {
+      const adminDiv = card.querySelector("div.flex.gap-2");
+      const delQBtn = document.createElement("button");
+      delQBtn.textContent = "Delete Question";
+      delQBtn.className = "text-red-500 hover:underline text-sm";
+      delQBtn.addEventListener("click", async () => {
+        try {
+          await fetch(BASE_URL + `/api/questions/${q.id}`, { method: "DELETE" });
+          fetchQuestions();
+        } catch { alert("Failed to delete question."); }
+      });
+      adminDiv.appendChild(delQBtn);
+    }
 
     return card;
   }
@@ -103,6 +149,7 @@
     }[m]));
   }
 
+  // Ask handler
   askBtn.addEventListener("click", async () => {
     const text = qInput.value.trim();
     if (!text) return;
@@ -114,11 +161,10 @@
       });
       if (!res.ok) throw new Error("Create failed");
       qInput.value = "";
-    } catch (e) {
-      alert("Failed to post. Check connection.");
-    }
+    } catch { alert("Failed to post."); }
   });
 
+  // WebSocket
   let sock;
   function connectWS() {
     setStatus(false);
@@ -128,33 +174,28 @@
       sock.onmessage = (e) => {
         try {
           const msg = JSON.parse(e.data);
-          if (msg.type === "question_created") {
-            prependQuestion(msg.payload);
-          } else if (msg.type === "reply_added") {
-            addReply(msg.payload.questionId, msg.payload.reply);
-          }
+          if (msg.type === "question_created") prependQuestion(msg.payload);
+          else if (msg.type === "reply_added") addReply(msg.payload.questionId, msg.payload.reply);
         } catch {}
       };
-      sock.onclose = () => {
-        setStatus(false);
-        setTimeout(connectWS, 1500);
-      };
-    } catch (e) {
-      console.error("SockJS error", e);
-      setTimeout(connectWS, 1500);
-    }
+      sock.onclose = () => { setStatus(false); setTimeout(connectWS, 1500); };
+    } catch { setTimeout(connectWS, 1500); }
   }
 
-  function prependQuestion(q) {
-    emptyEl.style.display = "none";
-    const card = questionCard(q);
-    qList.prepend(card);
-  }
+  function prependQuestion(q) { emptyEl.style.display = "none"; qList.prepend(questionCard(q)); }
+  function addReply(qid, reply) { fetchQuestions(); }
 
-  function addReply(qid, reply) {
-    fetchQuestions();
-  }
+  // CLEAR ALL (Admin only)
+  window.clearAllQuestions = async () => {
+    if (!isAdmin) return alert("Admin only");
+    if (!confirm("Delete all questions and replies?")) return;
+    try {
+      await fetch(BASE_URL + "/api/questions", { method: "DELETE" });
+      fetchQuestions();
+    } catch { alert("Failed to clear all."); }
+  };
 
+  // Init
   fetchQuestions();
   connectWS();
 })();
