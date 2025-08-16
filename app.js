@@ -11,7 +11,6 @@
   const clearAllBtn = document.getElementById("clearAllBtn");
 
   let adminToken = localStorage.getItem("adminToken") || null;
-
   const BASE_URL = window.BACKEND_URL || "https://chic-reprieve-production.up.railway.app";
   const WS_URL = BASE_URL + "/ws";
 
@@ -74,13 +73,10 @@
     const input = card.querySelector("input");
     const btn = card.querySelector("button");
 
-    // Send reply
     btn.addEventListener("click", () => sendReply(q.id, input));
-    input.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") sendReply(q.id, input);
-    });
+    input.addEventListener("keypress", (e) => { if (e.key === "Enter") sendReply(q.id, input); });
 
-    // ONLY admin can see delete buttons
+    // Only render delete buttons if adminToken is verified
     if (adminToken) renderAdminDelete(card, q.id, repliesEl, q.replies || []);
 
     return card;
@@ -108,7 +104,7 @@
     );
   }
 
-  // Ask question
+  // Send question
   askBtn.addEventListener("click", () => sendQuestion());
   qInput.addEventListener("keypress", (e) => { if (e.key === "Enter") sendQuestion(); });
 
@@ -144,7 +140,7 @@
     }
   }
 
-  // SockJS real-time
+  // WebSocket for live updates
   let sock;
   function connectWS() {
     setStatus(false);
@@ -176,7 +172,7 @@
     appendReply(repliesEl, qid, reply);
   }
 
-  // Admin delete
+  // Admin delete functions
   async function deleteQuestion(qid) {
     if (!adminToken) return alert("Not logged in as admin");
     if (!confirm("Delete this question?")) return;
@@ -257,8 +253,8 @@
       const data = await res.json();
       adminToken = data.token;
       localStorage.setItem("adminToken", adminToken);
-      alert("✅ Admin logged in");
       clearAllBtn.classList.remove("hidden");
+      alert("✅ Admin logged in");
       fetchQuestions();
       adminModal.classList.add("hidden");
     } catch {
@@ -268,7 +264,7 @@
 
   adminSubmitBtn.addEventListener("click", () => loginAdmin(adminPasswordInput.value.trim()));
 
-  // Clear all questions
+  // Clear all
   clearAllBtn.addEventListener("click", async () => {
     if (!adminToken) return alert("Not logged in as admin");
     if (!confirm("Clear ALL questions and replies?")) return;
@@ -285,10 +281,27 @@
     }
   });
 
-  // Show admin UI if token exists
-  if (adminToken) clearAllBtn.classList.remove("hidden");
+  // Admin token verification on page load
+  async function verifyAdminToken() {
+    if (!adminToken) return false;
+    try {
+      const res = await fetch(BASE_URL + "/api/admin/verify", {
+        headers: { Authorization: "Bearer " + adminToken },
+      });
+      if (!res.ok) throw new Error("Invalid token");
+      clearAllBtn.classList.remove("hidden");
+      return true;
+    } catch {
+      localStorage.removeItem("adminToken");
+      adminToken = null;
+      clearAllBtn.classList.add("hidden");
+      return false;
+    }
+  }
 
   // Init
-  fetchQuestions();
-  connectWS();
+  verifyAdminToken().then(() => {
+    fetchQuestions();
+    connectWS();
+  });
 })();
