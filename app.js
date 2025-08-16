@@ -1,3 +1,4 @@
+// frontend/app.js
 (function () {
   const statusEl = document.getElementById("status");
   const statusText = document.getElementById("statusText");
@@ -9,11 +10,14 @@
   const adminLoginBtn = document.getElementById("adminLoginBtn");
   const clearAllBtn = document.getElementById("clearAllBtn");
 
+  // keep admin login token
   let adminToken = localStorage.getItem("adminToken") || null;
 
   // ---- Backend URLs ----
-  const BASE_URL = window.BACKEND_URL || "https://chic-reprieve-production.up.railway.app";
-  const WS_URL = BASE_URL.replace(/^http/, "wss") + "/ws";
+  const BASE_URL =
+    window.BACKEND_URL || "https://chic-reprieve-production.up.railway.app";
+  // ✅ FIXED: SockJS must use https:// not wss://
+  const WS_URL = BASE_URL + "/ws";
 
   function setStatus(connected) {
     if (connected) {
@@ -27,6 +31,7 @@
     }
   }
 
+  // --------- Load + Render Questions ----------
   async function fetchQuestions() {
     try {
       const res = await fetch(BASE_URL + "/api/questions");
@@ -67,21 +72,25 @@
       </div>
     `;
 
+    // --- render replies
     const repliesEl = card.querySelector("[data-replies]");
     (q.replies || []).forEach((r) => {
       const li = document.createElement("div");
-      li.className = "bg-gray-50 rounded-xl px-3 py-2 text-sm flex justify-between items-center";
+      li.className =
+        "bg-gray-50 rounded-xl px-3 py-2 text-sm flex justify-between items-center";
       li.innerHTML = `<span>${escapeHTML(r.text)}</span>`;
       if (adminToken) {
         const delBtn = document.createElement("button");
         delBtn.textContent = "Delete";
-        delBtn.className = "text-xs text-red-600 hover:text-red-800 ml-2 underline";
+        delBtn.className =
+          "text-xs text-red-600 hover:text-red-800 ml-2 underline";
         delBtn.addEventListener("click", () => deleteReply(q.id, r.id));
         li.appendChild(delBtn);
       }
       repliesEl.appendChild(li);
     });
 
+    // --- reply handler
     const input = card.querySelector("input");
     const btn = card.querySelector("button");
     btn.addEventListener("click", async () => {
@@ -95,11 +104,12 @@
         });
         if (!res.ok) throw new Error("Reply failed");
         input.value = "";
-      } catch (e) {
+      } catch {
         alert("Failed to send reply. Check connection.");
       }
     });
 
+    // --- admin delete for question
     if (adminToken) {
       const adminActions = card.querySelector("[data-admin-actions]");
       const delBtn = document.createElement("button");
@@ -114,10 +124,13 @@
 
   function escapeHTML(str) {
     return str.replace(/[&<>"']/g, (m) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[m])
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[
+        m
+      ])
     );
   }
 
+  // --------- Ask a Question ----------
   askBtn.addEventListener("click", async () => {
     const text = qInput.value.trim();
     if (!text) return;
@@ -129,12 +142,12 @@
       });
       if (!res.ok) throw new Error("Create failed");
       qInput.value = "";
-    } catch (e) {
+    } catch {
       alert("Failed to post. Check connection.");
     }
   });
 
-  // --- WebSocket ---
+  // --------- Real-time (SockJS) ----------
   let sock;
   function connectWS() {
     setStatus(false);
@@ -144,8 +157,12 @@
       try {
         const msg = JSON.parse(e.data);
         if (msg.type === "question_created") prependQuestion(msg.payload);
-        else if (msg.type === "reply_added") addReply(msg.payload.questionId, msg.payload.reply);
-        else if (["question_deleted", "reply_deleted", "cleared"].includes(msg.type)) fetchQuestions();
+        else if (msg.type === "reply_added")
+          addReply(msg.payload.questionId, msg.payload.reply);
+        else if (
+          ["question_deleted", "reply_deleted", "cleared"].includes(msg.type)
+        )
+          fetchQuestions();
       } catch {}
     };
     sock.onclose = () => {
@@ -159,11 +176,11 @@
     qList.prepend(questionCard(q));
   }
 
-  function addReply(qid, reply) {
+  function addReply() {
     fetchQuestions();
   }
 
-  // --- Admin ---
+  // --------- Admin Functions ----------
   async function deleteQuestion(qid) {
     if (!adminToken) return alert("Not logged in");
     if (!confirm("Delete this question?")) return;
@@ -194,6 +211,7 @@
     }
   }
 
+  // login
   adminLoginBtn.addEventListener("click", async () => {
     const password = prompt("Enter admin password:", window.ADMIN_KEY || "");
     if (!password) return;
@@ -215,9 +233,10 @@
     }
   });
 
+  // clear
   clearAllBtn.addEventListener("click", async () => {
     if (!adminToken) return alert("Not logged in as admin");
-    if (!confirm("Are you sure you want to clear all questions and replies?")) return;
+    if (!confirm("Clear ALL questions and replies?")) return;
     try {
       const res = await fetch(BASE_URL + "/api/admin/clear", {
         method: "POST",
@@ -231,7 +250,7 @@
     }
   });
 
-  // --- Init ---
+  // --------- Init ----------
   fetchQuestions();
   connectWS();
 })();
