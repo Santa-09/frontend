@@ -13,7 +13,8 @@
       return window.BACKEND_URL.replace(/\/+$/, "");
     }
     // 2) Local dev fallback
-    return "http://localhost:3001";
+    return "https://web-production-1797e.up.railway.app
+";
   }
 
   const BASE_URL = computeBackendUrl();
