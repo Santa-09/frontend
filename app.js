@@ -14,7 +14,9 @@
 
   // ---- Set Railway backend URL ----
   const BASE_URL = "https://chic-reprieve-production.up.railway.app";
-  const WS_URL = BASE_URL.replace(/^http/, "ws") + "/ws";
+const WS_URL = BASE_URL.startsWith("https")
+  ? BASE_URL.replace("https", "wss") + "/ws"
+  : BASE_URL.replace("http", "ws") + "/ws";
 
   function setStatus(connected) {
     if (connected) {
