@@ -6,17 +6,14 @@
   const qList = document.getElementById("questions");
   const emptyEl = document.getElementById("listEmpty");
 
-  // Admin buttons
   const adminLoginBtn = document.getElementById("adminLoginBtn");
   const clearAllBtn = document.getElementById("clearAllBtn");
 
-  let adminToken = null;
+  let adminToken = localStorage.getItem("adminToken") || null;
 
-  // ---- Set Railway backend URL ----
-  const BASE_URL = "https://chic-reprieve-production.up.railway.app";
-const WS_URL = BASE_URL.startsWith("https")
-  ? BASE_URL.replace("https", "wss") + "/ws"
-  : BASE_URL.replace("http", "ws") + "/ws";
+  // ---- Backend URLs ----
+  const BASE_URL = window.BACKEND_URL || "https://chic-reprieve-production.up.railway.app";
+  const WS_URL = BASE_URL.replace(/^http/, "wss") + "/ws";
 
   function setStatus(connected) {
     if (connected) {
@@ -47,16 +44,14 @@ const WS_URL = BASE_URL.startsWith("https")
       return;
     }
     emptyEl.style.display = "none";
-
-    list.forEach((q) => {
-      qList.appendChild(questionCard(q));
-    });
+    list.forEach((q) => qList.appendChild(questionCard(q)));
   }
 
   function questionCard(q) {
     const card = document.createElement("div");
     card.className = "card bg-white rounded-2xl p-5";
     const date = new Date(q.createdAt);
+
     card.innerHTML = `
       <div class="flex items-start justify-between gap-4">
         <div>
@@ -72,27 +67,21 @@ const WS_URL = BASE_URL.startsWith("https")
       </div>
     `;
 
-    // render replies
     const repliesEl = card.querySelector("[data-replies]");
     (q.replies || []).forEach((r) => {
       const li = document.createElement("div");
-      li.className =
-        "bg-gray-50 rounded-xl px-3 py-2 text-sm flex justify-between items-center";
+      li.className = "bg-gray-50 rounded-xl px-3 py-2 text-sm flex justify-between items-center";
       li.innerHTML = `<span>${escapeHTML(r.text)}</span>`;
       if (adminToken) {
         const delBtn = document.createElement("button");
         delBtn.textContent = "Delete";
-        delBtn.className =
-          "text-xs text-red-600 hover:text-red-800 ml-2 underline";
-        delBtn.addEventListener("click", () =>
-          deleteReply(q.id, r.id)
-        );
+        delBtn.className = "text-xs text-red-600 hover:text-red-800 ml-2 underline";
+        delBtn.addEventListener("click", () => deleteReply(q.id, r.id));
         li.appendChild(delBtn);
       }
       repliesEl.appendChild(li);
     });
 
-    // reply handler
     const input = card.querySelector("input");
     const btn = card.querySelector("button");
     btn.addEventListener("click", async () => {
@@ -111,13 +100,11 @@ const WS_URL = BASE_URL.startsWith("https")
       }
     });
 
-    // admin delete button for question
     if (adminToken) {
       const adminActions = card.querySelector("[data-admin-actions]");
       const delBtn = document.createElement("button");
       delBtn.textContent = "Delete";
-      delBtn.className =
-        "text-xs text-red-600 hover:text-red-800 underline";
+      delBtn.className = "text-xs text-red-600 hover:text-red-800 underline";
       delBtn.addEventListener("click", () => deleteQuestion(q.id));
       adminActions.appendChild(delBtn);
     }
@@ -127,11 +114,10 @@ const WS_URL = BASE_URL.startsWith("https")
 
   function escapeHTML(str) {
     return str.replace(/[&<>"']/g, (m) =>
-      ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m])
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[m])
     );
   }
 
-  // Ask handler
   askBtn.addEventListener("click", async () => {
     const text = qInput.value.trim();
     if (!text) return;
@@ -148,50 +134,36 @@ const WS_URL = BASE_URL.startsWith("https")
     }
   });
 
-  // Real-time via SockJS
+  // --- WebSocket ---
   let sock;
   function connectWS() {
     setStatus(false);
-    try {
-      sock = new SockJS(WS_URL);
-      sock.onopen = () => setStatus(true);
-      sock.onmessage = (e) => {
-        try {
-          const msg = JSON.parse(e.data);
-          if (msg.type === "question_created") {
-            prependQuestion(msg.payload);
-          } else if (msg.type === "reply_added") {
-            addReply(msg.payload.questionId, msg.payload.reply);
-          } else if (
-            msg.type === "question_deleted" ||
-            msg.type === "reply_deleted" ||
-            msg.type === "cleared"
-          ) {
-            fetchQuestions();
-          }
-        } catch {}
-      };
-      sock.onclose = () => {
-        setStatus(false);
-        setTimeout(connectWS, 1500);
-      };
-    } catch (e) {
-      console.error("SockJS error", e);
+    sock = new SockJS(WS_URL);
+    sock.onopen = () => setStatus(true);
+    sock.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === "question_created") prependQuestion(msg.payload);
+        else if (msg.type === "reply_added") addReply(msg.payload.questionId, msg.payload.reply);
+        else if (["question_deleted", "reply_deleted", "cleared"].includes(msg.type)) fetchQuestions();
+      } catch {}
+    };
+    sock.onclose = () => {
+      setStatus(false);
       setTimeout(connectWS, 1500);
-    }
+    };
   }
 
   function prependQuestion(q) {
     emptyEl.style.display = "none";
-    const card = questionCard(q);
-    qList.prepend(card);
+    qList.prepend(questionCard(q));
   }
 
   function addReply(qid, reply) {
     fetchQuestions();
   }
 
-  // --- Admin functions ---
+  // --- Admin ---
   async function deleteQuestion(qid) {
     if (!adminToken) return alert("Not logged in");
     if (!confirm("Delete this question?")) return;
@@ -202,7 +174,7 @@ const WS_URL = BASE_URL.startsWith("https")
       });
       if (!res.ok) throw new Error("Delete failed");
       fetchQuestions();
-    } catch (err) {
+    } catch {
       alert("❌ Failed to delete question");
     }
   }
@@ -211,24 +183,19 @@ const WS_URL = BASE_URL.startsWith("https")
     if (!adminToken) return alert("Not logged in");
     if (!confirm("Delete this reply?")) return;
     try {
-      const res = await fetch(
-        BASE_URL + `/api/questions/${qid}/replies/${rid}`,
-        {
-          method: "DELETE",
-          headers: { Authorization: "Bearer " + adminToken },
-        }
-      );
+      const res = await fetch(BASE_URL + `/api/questions/${qid}/replies/${rid}`, {
+        method: "DELETE",
+        headers: { Authorization: "Bearer " + adminToken },
+      });
       if (!res.ok) throw new Error("Delete failed");
       fetchQuestions();
-    } catch (err) {
+    } catch {
       alert("❌ Failed to delete reply");
     }
   }
 
-  // --- Admin login / clear ---
   adminLoginBtn.addEventListener("click", async () => {
-    // auto-fill the key for testing
-    const password = prompt("Enter admin password:", "santanu@2006");
+    const password = prompt("Enter admin password:", window.ADMIN_KEY || "");
     if (!password) return;
     try {
       const res = await fetch(BASE_URL + "/api/admin/login", {
@@ -242,16 +209,15 @@ const WS_URL = BASE_URL.startsWith("https")
       localStorage.setItem("adminToken", adminToken);
       alert("✅ Admin logged in");
       clearAllBtn.classList.remove("hidden");
-      fetchQuestions(); // refresh to show delete buttons
-    } catch (err) {
+      fetchQuestions();
+    } catch {
       alert("❌ Admin login failed");
     }
   });
 
   clearAllBtn.addEventListener("click", async () => {
     if (!adminToken) return alert("Not logged in as admin");
-    if (!confirm("Are you sure you want to clear all questions and replies?"))
-      return;
+    if (!confirm("Are you sure you want to clear all questions and replies?")) return;
     try {
       const res = await fetch(BASE_URL + "/api/admin/clear", {
         method: "POST",
@@ -260,14 +226,12 @@ const WS_URL = BASE_URL.startsWith("https")
       if (!res.ok) throw new Error("Clear failed");
       alert("✅ All questions cleared");
       fetchQuestions();
-    } catch (err) {
+    } catch {
       alert("❌ Failed to clear questions");
     }
   });
 
-  // Init
-  // load token from localStorage if exists
-  adminToken = localStorage.getItem("adminToken") || null;
+  // --- Init ---
   fetchQuestions();
   connectWS();
 })();
