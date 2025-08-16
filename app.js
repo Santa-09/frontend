@@ -10,19 +10,13 @@
   const adminLoginBtn = document.getElementById("adminLoginBtn");
   const clearAllBtn = document.getElementById("clearAllBtn");
 
-  // Admin modal elements
-  const adminModal = document.getElementById("adminModal");
-  const adminPasswordInput = document.getElementById("adminPasswordInput");
-  const adminCancelBtn = document.getElementById("adminCancelBtn");
-  const adminSubmitBtn = document.getElementById("adminSubmitBtn");
-
   // keep admin login token
   let adminToken = localStorage.getItem("adminToken") || null;
 
   // ---- Backend URLs ----
   const BASE_URL =
     window.BACKEND_URL || "https://chic-reprieve-production.up.railway.app";
-  const WS_URL = BASE_URL + "/ws"; // ✅ SockJS works with https://
+  const WS_URL = BASE_URL + "/ws"; // SockJS works over https://
 
   function setStatus(connected) {
     if (connected) {
@@ -60,6 +54,7 @@
   function questionCard(q) {
     const card = document.createElement("div");
     card.className = "card bg-white rounded-2xl p-5";
+    card.dataset.qid = q.id; // store ID in DOM for easy lookup
     const date = new Date(q.createdAt);
 
     card.innerHTML = `
@@ -79,21 +74,7 @@
 
     // --- render replies
     const repliesEl = card.querySelector("[data-replies]");
-    (q.replies || []).forEach((r) => {
-      const li = document.createElement("div");
-      li.className =
-        "bg-gray-50 rounded-xl px-3 py-2 text-sm flex justify-between items-center";
-      li.innerHTML = `<span>${escapeHTML(r.text)}</span>`;
-      if (adminToken) {
-        const delBtn = document.createElement("button");
-        delBtn.textContent = "Delete";
-        delBtn.className =
-          "text-xs text-red-600 hover:text-red-800 ml-2 underline";
-        delBtn.addEventListener("click", () => deleteReply(q.id, r.id));
-        li.appendChild(delBtn);
-      }
-      repliesEl.appendChild(li);
-    });
+    (q.replies || []).forEach((r) => appendReply(repliesEl, q.id, r));
 
     // --- reply handler
     const input = card.querySelector("input");
@@ -127,9 +108,27 @@
     return card;
   }
 
+  function appendReply(repliesEl, qid, r) {
+    const li = document.createElement("div");
+    li.className =
+      "bg-gray-50 rounded-xl px-3 py-2 text-sm flex justify-between items-center";
+    li.innerHTML = `<span>${escapeHTML(r.text)}</span>`;
+    if (adminToken) {
+      const delBtn = document.createElement("button");
+      delBtn.textContent = "Delete";
+      delBtn.className =
+        "text-xs text-red-600 hover:text-red-800 ml-2 underline";
+      delBtn.addEventListener("click", () => deleteReply(qid, r.id));
+      li.appendChild(delBtn);
+    }
+    repliesEl.appendChild(li);
+  }
+
   function escapeHTML(str) {
     return str.replace(/[&<>"']/g, (m) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[m])
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[
+        m
+      ])
     );
   }
 
@@ -179,13 +178,20 @@
     qList.prepend(questionCard(q));
   }
 
-  function addReply() {
-    fetchQuestions();
+  // ✅ FIXED: append reply instead of re-fetching
+  function addReply(qid, reply) {
+    const card = [...qList.children].find(
+      (el) => el.dataset.qid === qid
+    );
+    if (!card) return fetchQuestions();
+
+    const repliesEl = card.querySelector("[data-replies]");
+    appendReply(repliesEl, qid, reply);
   }
 
   // --------- Admin Functions ----------
   async function deleteQuestion(qid) {
-    if (!adminToken) return alert("Not logged in as admin");
+    if (!adminToken) return alert("Not logged in");
     if (!confirm("Delete this question?")) return;
     try {
       const res = await fetch(BASE_URL + `/api/questions/${qid}`, {
@@ -200,7 +206,7 @@
   }
 
   async function deleteReply(qid, rid) {
-    if (!adminToken) return alert("Not logged in as admin");
+    if (!adminToken) return alert("Not logged in");
     if (!confirm("Delete this reply?")) return;
     try {
       const res = await fetch(BASE_URL + `/api/questions/${qid}/replies/${rid}`, {
@@ -214,7 +220,12 @@
     }
   }
 
-  // --- Admin Login Modal Logic ---
+  // login modal (already in your index.html)
+  const adminModal = document.getElementById("adminModal");
+  const adminPasswordInput = document.getElementById("adminPasswordInput");
+  const adminCancelBtn = document.getElementById("adminCancelBtn");
+  const adminSubmitBtn = document.getElementById("adminSubmitBtn");
+
   adminLoginBtn.addEventListener("click", () => {
     adminPasswordInput.value = "";
     adminModal.classList.remove("hidden");
@@ -228,6 +239,7 @@
   adminSubmitBtn.addEventListener("click", async () => {
     const password = adminPasswordInput.value.trim();
     if (!password) return alert("Please enter password");
+
     try {
       const res = await fetch(BASE_URL + "/api/admin/login", {
         method: "POST",
@@ -235,13 +247,15 @@
         body: JSON.stringify({ password }),
       });
       if (!res.ok) throw new Error("Login failed");
+
       const data = await res.json();
       adminToken = data.token;
       localStorage.setItem("adminToken", adminToken);
+
       alert("✅ Admin logged in");
       clearAllBtn.classList.remove("hidden");
-      fetchQuestions();
-      adminModal.classList.add("hidden"); // hide modal after success
+      fetchQuestions(); // refresh to show delete buttons
+      adminModal.classList.add("hidden");
     } catch {
       alert("❌ Admin login failed");
     }
