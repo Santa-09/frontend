@@ -10,14 +10,10 @@
   const adminLoginBtn = document.getElementById("adminLoginBtn");
   const clearAllBtn = document.getElementById("clearAllBtn");
 
-  // --- Admin token ---
-  let adminToken = null;
-  localStorage.removeItem("adminToken"); // clear token on reload
+  let adminToken = localStorage.getItem("adminToken") || null;
 
-  // ---- Backend URLs ----
-  const BASE_URL =
-    window.BACKEND_URL || "https://chic-reprieve-production.up.railway.app";
-  const WS_URL = BASE_URL + "/ws"; // SockJS over HTTPS
+  const BASE_URL = window.BACKEND_URL || "https://chic-reprieve-production.up.railway.app";
+  const WS_URL = BASE_URL + "/ws";
 
   function setStatus(connected) {
     if (connected) {
@@ -31,7 +27,6 @@
     }
   }
 
-  // --------- Load + Render Questions ----------
   async function fetchQuestions() {
     try {
       const res = await fetch(BASE_URL + "/api/questions");
@@ -73,30 +68,20 @@
       </div>
     `;
 
-    // --- render replies
     const repliesEl = card.querySelector("[data-replies]");
     (q.replies || []).forEach((r) => appendReply(repliesEl, q.id, r));
 
-    // --- reply handler
     const input = card.querySelector("input");
     const btn = card.querySelector("button");
-    btn.addEventListener("click", async () => {
-      const text = input.value.trim();
-      if (!text) return;
-      try {
-        const res = await fetch(BASE_URL + `/api/questions/${q.id}/replies`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text }),
-        });
-        if (!res.ok) throw new Error("Reply failed");
-        input.value = "";
-      } catch {
-        alert("Failed to send reply. Check connection.");
-      }
+
+    // Add reply click
+    btn.addEventListener("click", () => sendReply(q.id, input));
+
+    // Add reply enter key
+    input.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") sendReply(q.id, input);
     });
 
-    // --- admin delete for question
     if (adminToken) {
       const adminActions = card.querySelector("[data-admin-actions]");
       const delBtn = document.createElement("button");
@@ -111,14 +96,12 @@
 
   function appendReply(repliesEl, qid, r) {
     const li = document.createElement("div");
-    li.className =
-      "bg-gray-50 rounded-xl px-3 py-2 text-sm flex justify-between items-center";
+    li.className = "bg-gray-50 rounded-xl px-3 py-2 text-sm flex justify-between items-center";
     li.innerHTML = `<span>${escapeHTML(r.text)}</span>`;
     if (adminToken) {
       const delBtn = document.createElement("button");
       delBtn.textContent = "Delete";
-      delBtn.className =
-        "text-xs text-red-600 hover:text-red-800 ml-2 underline";
+      delBtn.className = "text-xs text-red-600 hover:text-red-800 ml-2 underline";
       delBtn.addEventListener("click", () => deleteReply(qid, r.id));
       li.appendChild(delBtn);
     }
@@ -127,14 +110,19 @@
 
   function escapeHTML(str) {
     return str.replace(/[&<>"']/g, (m) =>
-      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[
-        m
-      ])
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[m])
     );
   }
 
-  // --------- Ask a Question ----------
-  askBtn.addEventListener("click", async () => {
+  // Ask question click
+  askBtn.addEventListener("click", () => sendQuestion());
+
+  // Ask question enter key
+  qInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") sendQuestion();
+  });
+
+  async function sendQuestion() {
     const text = qInput.value.trim();
     if (!text) return;
     try {
@@ -148,9 +136,25 @@
     } catch {
       alert("Failed to post. Check connection.");
     }
-  });
+  }
 
-  // --------- Real-time (SockJS) ----------
+  async function sendReply(qid, input) {
+    const text = input.value.trim();
+    if (!text) return;
+    try {
+      const res = await fetch(BASE_URL + `/api/questions/${qid}/replies`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) throw new Error("Reply failed");
+      input.value = "";
+    } catch {
+      alert("Failed to send reply. Check connection.");
+    }
+  }
+
+  // SockJS Real-time
   let sock;
   function connectWS() {
     setStatus(false);
@@ -160,12 +164,8 @@
       try {
         const msg = JSON.parse(e.data);
         if (msg.type === "question_created") prependQuestion(msg.payload);
-        else if (msg.type === "reply_added")
-          addReply(msg.payload.questionId, msg.payload.reply);
-        else if (
-          ["question_deleted", "reply_deleted", "cleared"].includes(msg.type)
-        )
-          fetchQuestions();
+        else if (msg.type === "reply_added") addReply(msg.payload.questionId, msg.payload.reply);
+        else if (["question_deleted", "reply_deleted", "cleared"].includes(msg.type)) fetchQuestions();
       } catch {}
     };
     sock.onclose = () => {
@@ -180,16 +180,13 @@
   }
 
   function addReply(qid, reply) {
-    const card = [...qList.children].find(
-      (el) => el.dataset.qid === qid
-    );
+    const card = [...qList.children].find((el) => el.dataset.qid === qid);
     if (!card) return fetchQuestions();
-
     const repliesEl = card.querySelector("[data-replies]");
     appendReply(repliesEl, qid, reply);
   }
 
-  // --------- Admin Functions ----------
+  // Admin functions
   async function deleteQuestion(qid) {
     if (!adminToken) return alert("Not logged in");
     if (!confirm("Delete this question?")) return;
@@ -220,64 +217,7 @@
     }
   }
 
-  // --------- Admin Login / Modal ----------
-  const adminModal = document.getElementById("adminModal");
-  const adminPasswordInput = document.getElementById("adminPasswordInput");
-  const adminCancelBtn = document.getElementById("adminCancelBtn");
-  const adminSubmitBtn = document.getElementById("adminSubmitBtn");
-
-  adminLoginBtn.addEventListener("click", () => {
-    adminPasswordInput.value = "";
-    adminModal.classList.remove("hidden");
-    adminPasswordInput.focus();
-  });
-
-  adminCancelBtn.addEventListener("click", () => {
-    adminModal.classList.add("hidden");
-  });
-
-  adminSubmitBtn.addEventListener("click", async () => {
-    const password = adminPasswordInput.value.trim();
-    if (!password) return alert("Please enter password");
-
-    try {
-      const res = await fetch(BASE_URL + "/api/admin/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
-      if (!res.ok) throw new Error("Login failed");
-
-      const data = await res.json();
-      adminToken = data.token;
-
-      alert("✅ Admin logged in");
-      clearAllBtn.classList.remove("hidden");
-      fetchQuestions(); // refresh to show delete buttons
-      adminModal.classList.add("hidden");
-    } catch {
-      alert("❌ Admin login failed");
-    }
-  });
-
-  // clear
-  clearAllBtn.addEventListener("click", async () => {
-    if (!adminToken) return alert("Not logged in as admin");
-    if (!confirm("Clear ALL questions and replies?")) return;
-    try {
-      const res = await fetch(BASE_URL + "/api/admin/clear", {
-        method: "POST",
-        headers: { Authorization: "Bearer " + adminToken },
-      });
-      if (!res.ok) throw new Error("Clear failed");
-      alert("✅ All questions cleared");
-      fetchQuestions();
-    } catch {
-      alert("❌ Failed to clear questions");
-    }
-  });
-
-  // --------- Init ----------
+  // Init
   fetchQuestions();
   connectWS();
 })();
