@@ -18,7 +18,8 @@
     if (hostname === "localhost" || hostname === "127.0.0.1") {
       return "http://localhost:5000";
     }
-    return "https://chic-reprieve-production.up.railway.app"; // your Railway backend
+    // fallback to configured value for production
+    return (window.BACKEND_URL || "").replace(/\/+$/,"");
   }
 
   const BASE_URL = computeBackendUrl();
@@ -55,7 +56,7 @@
     const card = document.createElement("div");
     card.className = "card bg-white rounded-2xl p-5";
     card.dataset.qid = q.id;
-    const date = new Date(q.createdAt);
+    const date = new Date(q.createdAt || Date.now());
 
     card.innerHTML = `
       <div class="flex items-start justify-between gap-4">
@@ -161,12 +162,15 @@
     sock.onmessage = (e) => {
       try {
         const msg = JSON.parse(e.data);
-        if (msg.type === "question_created") prependQuestion(msg.payload);
-        else if (msg.type === "reply_added")
+        // ✅ event names aligned with backend
+        if (msg.type === "new-question") prependQuestion(msg.payload);
+        else if (msg.type === "new-reply")
           addReply(msg.payload.questionId, msg.payload.reply);
-        else if (
-          ["question_deleted", "reply_deleted", "cleared"].includes(msg.type)
-        )
+        else if (msg.type === "delete-question")
+          removeQuestion(msg.payload.id);
+        else if (msg.type === "delete-reply")
+          removeReply(msg.payload.questionId, msg.payload.replyId);
+        else if (msg.type === "clear-all")
           fetchQuestions();
       } catch {}
     };
@@ -185,6 +189,21 @@
     if (!card) return fetchQuestions();
     const repliesEl = card.querySelector("[data-replies]");
     appendReply(repliesEl, qid, reply);
+  }
+  function removeQuestion(qid) {
+    const card = [...qList.children].find((el) => el.dataset.qid === qid);
+    if (card) card.remove();
+    if (qList.children.length === 0) emptyEl.style.display = "";
+  }
+  function removeReply(qid, rid) {
+    const card = [...qList.children].find((el) => el.dataset.qid === qid);
+    if (!card) return fetchQuestions();
+    const repliesEl = card.querySelector("[data-replies]");
+    [...repliesEl.children].forEach((child) => {
+      // crude match by attached delete handler id text isn't stored, so refetch if needed
+      // (UI will refresh on next fetch anyway)
+    });
+    fetchQuestions(); // simplest reliable refresh
   }
 
   // Admin functions
@@ -228,17 +247,8 @@
     adminActions.appendChild(delBtn);
 
     repliesList.forEach((r) => {
-      const li = [...repliesEl.children].find((l) =>
-        l.textContent.includes(r.text)
-      );
-      if (li && !li.querySelector("button")) {
-        const btn = document.createElement("button");
-        btn.textContent = "Delete";
-        btn.className =
-          "text-xs text-red-600 hover:text-red-800 ml-2 underline";
-        btn.addEventListener("click", () => deleteReply(qid, r.id));
-        li.appendChild(btn);
-      }
+      const li = document.createElement("div");
+      // buttons for each reply will be drawn when appending replies
     });
   }
 
@@ -263,7 +273,7 @@
       const res = await fetch(BASE_URL + "/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ username: "admin", password })
       });
       if (!res.ok) throw new Error();
       const data = await res.json();
@@ -284,13 +294,13 @@
     loginAdmin(adminPasswordInput.value.trim())
   );
 
-  // Clear all
+  // Clear all (DELETE /api/questions)
   clearAllBtn.addEventListener("click", async () => {
     if (!adminToken) return alert("Not logged in as admin");
     if (!confirm("Clear ALL questions and replies?")) return;
     try {
-      const res = await fetch(BASE_URL + "/api/admin/clear", {
-        method: "POST",
+      const res = await fetch(BASE_URL + "/api/questions", {
+        method: "DELETE",
         headers: { Authorization: "Bearer " + adminToken },
       });
       if (!res.ok) throw new Error();
@@ -301,35 +311,34 @@
     }
   });
 
-  // Fetch total members
-  // Fetch total members
-// Fetch members list + count
-async function fetchAdminMembers() {
-  try {
-    const res = await fetch(BASE_URL + "/api/admin/members", {
-      headers: { "Authorization": `Bearer ${adminToken}` }
-    });
-    if (!res.ok) throw new Error();
-    const data = await res.json();
+  // Members list + count (admin only)
+  async function fetchAdminMembers() {
+    try {
+      const res = await fetch(BASE_URL + "/api/admin/members", {
+        headers: { "Authorization": `Bearer ${adminToken}` }
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
 
-    // Show total
-    document.getElementById("totalMembersCount").textContent = data.totalMembers;
+      // Show total
+      document.getElementById("totalMembersCount").textContent = data.totalMembers;
 
-    // Show list
-    const membersList = document.getElementById("membersList");
-    membersList.innerHTML = ""; // clear old
-    data.members.forEach(m => {
-      const li = document.createElement("li");
-      li.textContent = m.name || m.id || "Anonymous"; // adjust to your backend response
-      membersList.appendChild(li);
-    });
+      // Show list
+      const membersList = document.getElementById("membersList");
+      membersList.innerHTML = "";
+      data.members.forEach(m => {
+        const li = document.createElement("li");
+        li.textContent = m.id || "Anonymous";
+        membersList.appendChild(li);
+      });
 
-    // Reveal section
-    document.getElementById("adminMembers").classList.remove("hidden");
-  } catch (e) {
-    console.error("❌ Failed to fetch members:", e);
+      // Reveal section
+      document.getElementById("adminMembers").classList.remove("hidden");
+    } catch (e) {
+      console.error("❌ Failed to fetch members:", e);
+    }
   }
-}
+
   // Init (⚡ reset admin every load)
   adminToken = null;
   clearAllBtn.classList.add("hidden");
