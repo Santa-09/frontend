@@ -22,6 +22,15 @@
   const maintenanceLogo = document.getElementById("maintenanceLogo");
   const maintenanceTimerNote = document.getElementById("maintenanceTimerNote");
 
+  // === Settings sidebar & theme controls ===
+  const openSettingsBtn = document.getElementById("openSettingsBtn");
+  const closeSettingsBtn = document.getElementById("closeSettingsBtn");
+  const settingsSidebar = document.getElementById("settingsSidebar");
+  const settingsOverlay = document.getElementById("settingsOverlay");
+  const themeToggleBtn = document.getElementById("themeToggleBtn");
+  const currentTempUserEl = document.getElementById("currentTempUser");
+  const headerUserLine = document.getElementById("headerUserLine");
+
   // admin state (reset every refresh)
   let adminToken = null;
 
@@ -32,6 +41,56 @@
     logoUrl: "",
     until: null
   };
+
+  // ===== Temporary username (per device) =====
+  function generateUsername() {
+    const adjectives = ["bright","swift","calm","brave","mellow","clever","quiet","bold","eager","neat"];
+    const animals = ["sparrow","otter","koala","lynx","panda","falcon","tiger","orca","yak","gecko"];
+    const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+    const animal = animals[Math.floor(Math.random() * animals.length)];
+    const num = Math.floor(Math.random() * 900 + 100); // 3 digits
+    return `${adj}_${animal}_${num}`;
+  }
+  let tempUser = localStorage.getItem("tempUser");
+  if (!tempUser) {
+    tempUser = generateUsername();
+    localStorage.setItem("tempUser", tempUser);
+  }
+  if (currentTempUserEl) currentTempUserEl.textContent = tempUser;
+  if (headerUserLine) headerUserLine.textContent = `You are posting as: ${tempUser}`;
+
+  // ===== Theme (per device) =====
+  function applyTheme(theme) {
+    const root = document.documentElement;
+    if (theme === "dark") {
+      root.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      root.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  }
+  const savedTheme = localStorage.getItem("theme") || "light";
+  applyTheme(savedTheme);
+
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener("click", () => {
+      const current = localStorage.getItem("theme") || "light";
+      applyTheme(current === "light" ? "dark" : "light");
+    });
+  }
+
+  function openSidebar() {
+    settingsOverlay.classList.remove("hidden");
+    settingsSidebar.classList.add("open");
+  }
+  function closeSidebar() {
+    settingsOverlay.classList.add("hidden");
+    settingsSidebar.classList.remove("open");
+  }
+  if (openSettingsBtn) openSettingsBtn.addEventListener("click", openSidebar);
+  if (closeSettingsBtn) closeSettingsBtn.addEventListener("click", closeSidebar);
+  if (settingsOverlay) settingsOverlay.addEventListener("click", closeSidebar);
 
   // Auto-detect backend URL
   function computeBackendUrl() {
@@ -47,7 +106,9 @@
 
   function setStatus(connected) {
     statusEl.className = `inline-flex items-center gap-2 px-4 py-2 rounded-full mt-5 ${
-      connected ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
+      connected
+        ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-200"
+        : "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200"
     }`;
     statusText.textContent = connected ? "Connected" : "Connecting...";
   }
@@ -122,9 +183,17 @@
     setMaintenanceUI(maintenance);
   }
 
+  function userBadge(name) {
+    const safe = escapeHTML(name || "anonymous");
+    return `<span class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700
+                          dark:bg-gray-700 dark:text-gray-100">
+              👤 ${safe}
+            </span>`;
+  }
+
   function questionCard(q) {
     const card = document.createElement("div");
-    card.className = "card bg-white rounded-2xl p-5";
+    card.className = "card bg-white dark:bg-gray-800 rounded-2xl p-5";
     card.dataset.qid = q.id;
     const date = new Date(q.createdAt || Date.now());
 
@@ -132,13 +201,18 @@
       <div class="flex items-start justify-between gap-4">
         <div>
           <p class="text-lg font-semibold">${escapeHTML(q.text)}</p>
-          <p class="text-xs text-gray-400 mt-1">${date.toLocaleString()}</p>
+          <div class="flex items-center gap-2 mt-2">
+            ${userBadge(q.user)}
+            <span class="text-xs text-gray-400">${date.toLocaleString()}</span>
+          </div>
         </div>
         <div class="flex gap-2 items-center" data-admin-actions></div>
       </div>
       <div class="mt-4 space-y-2" data-replies></div>
       <div class="mt-4 flex gap-2">
-        <input type="text" placeholder="Write a reply..." class="flex-1 border border-gray-200 rounded-xl px-3 py-2 ring-focus">
+        <input type="text" placeholder="Write a reply..."
+               class="flex-1 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 ring-focus
+                      dark:bg-gray-900 dark:text-gray-100">
         <button class="bg-gray-800 hover:bg-black text-white px-4 py-2 rounded-xl">Reply</button>
       </div>
     `;
@@ -162,8 +236,15 @@
 
   function appendReply(repliesEl, qid, r) {
     const li = document.createElement("div");
-    li.className = "bg-gray-50 rounded-xl px-3 py-2 text-sm flex justify-between items-center";
-    li.innerHTML = `<span>${escapeHTML(r.text)}</span>`;
+    li.className = "bg-gray-50 dark:bg-gray-900 rounded-xl px-3 py-2 text-sm flex justify-between items-center";
+    const date = new Date(r.createdAt || Date.now());
+    li.innerHTML = `
+      <span>
+        ${escapeHTML(r.text)}
+        <span class="ml-2">${userBadge(r.user)}</span>
+        <span class="ml-2 text-xs text-gray-400">${date.toLocaleString()}</span>
+      </span>
+    `;
     if (adminToken) {
       const delBtn = document.createElement("button");
       delBtn.textContent = "Delete";
@@ -175,7 +256,7 @@
   }
 
   function escapeHTML(str) {
-    return str.replace(/[&<>"']/g, (m) => ({
+    return String(str ?? "").replace(/[&<>"']/g, (m) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
     }[m]));
   }
@@ -190,7 +271,7 @@
       const res = await fetch(BASE_URL + "/api/questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, user: tempUser }),
       });
       if (!res.ok) {
         if (res.status === 503) {
@@ -220,7 +301,7 @@
       const res = await fetch(BASE_URL + `/api/questions/${qid}/replies`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, user: tempUser }),
       });
       if (!res.ok) {
         if (res.status === 503) {
@@ -360,6 +441,11 @@
       // fetch members and maintenance status
       fetchAdminMembers();
       fetchMaintenanceStatus();
+      // After admin login, show delete buttons on existing cards
+      [...qList.children].forEach((card) => {
+        const qid = card.dataset.qid;
+        if (qid) renderAdminDelete(card, qid);
+      });
     } catch {
       alert("❌ Admin login failed");
     }
