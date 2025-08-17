@@ -9,7 +9,8 @@
   const adminLoginBtn = document.getElementById("adminLoginBtn");
   const clearAllBtn = document.getElementById("clearAllBtn");
 
-  let adminToken = localStorage.getItem("adminToken") || null;
+  // 🔥 admin state (reset every refresh)
+  let adminToken = null;
 
   // 🔥 Auto-detect backend URL
   function computeBackendUrl() {
@@ -266,8 +267,7 @@
       });
       if (!res.ok) throw new Error();
       const data = await res.json();
-      adminToken = data.token;
-      localStorage.setItem("adminToken", adminToken);
+      adminToken = data.token; // ✅ only memory
       alert("✅ Admin logged in");
       clearAllBtn.classList.remove("hidden");
       fetchQuestions();
@@ -317,11 +317,8 @@
     }
   }
 
-  // Init
-  if (adminToken) {
-    clearAllBtn.classList.remove("hidden");
-    fetchAdminMembers();
-  }
+  // Init (⚡ no auto-login anymore)
+  clearAllBtn.classList.add("hidden");
   fetchQuestions();
   connectWS();
 })();
