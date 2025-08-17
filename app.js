@@ -33,14 +33,6 @@
     until: null
   };
 
-  // ----------- NEW FEATURE: temp user ID -----------
-  let tempUserId = localStorage.getItem("tempUserId");
-  if (!tempUserId) {
-    tempUserId = prompt("Enter your username (e.g., user@123):", `user@${Math.floor(Math.random() * 1000)}`);
-    if (!tempUserId) tempUserId = `user@${Math.floor(Math.random() * 1000)}`;
-    localStorage.setItem("tempUserId", tempUserId);
-  }
-
   // Auto-detect backend URL
   function computeBackendUrl() {
     const hostname = window.location.hostname;
@@ -66,6 +58,7 @@
     const on = !!maintenance.status;
     maintenanceBanner.classList.toggle("hidden", !on);
 
+    // text & logo
     maintenanceText.textContent = maintenance.message || "🚧 Server under maintenance. Chat is temporarily disabled.";
     if (maintenance.logoUrl) {
       maintenanceLogo.src = maintenance.logoUrl;
@@ -75,6 +68,7 @@
       maintenanceLogo.removeAttribute("src");
     }
 
+    // show "until" if present
     if (maintenance.until) {
       const d = new Date(maintenance.until);
       if (!isNaN(d)) {
@@ -88,6 +82,7 @@
       maintUntilText.classList.add("hidden");
     }
 
+    // disable inputs everywhere
     qInput.disabled = on;
     askBtn.disabled = on;
     qInput.classList.toggle("opacity-60", on);
@@ -123,6 +118,7 @@
     }
     emptyEl.style.display = "none";
     list.forEach((q) => qList.appendChild(questionCard(q)));
+    // Re-apply maintenance state after rendering
     setMaintenanceUI(maintenance);
   }
 
@@ -136,7 +132,7 @@
       <div class="flex items-start justify-between gap-4">
         <div>
           <p class="text-lg font-semibold">${escapeHTML(q.text)}</p>
-          <p class="text-xs text-gray-400 mt-1">${date.toLocaleString()} - <span class="text-blue-700 font-medium">${escapeHTML(q.userId || "Anonymous")}</span></p>
+          <p class="text-xs text-gray-400 mt-1">${date.toLocaleString()}</p>
         </div>
         <div class="flex gap-2 items-center" data-admin-actions></div>
       </div>
@@ -158,6 +154,7 @@
       if (e.key === "Enter") sendReply(q.id, input);
     });
 
+    // Show delete only if admin
     if (adminToken) renderAdminDelete(card, q.id, repliesEl, q.replies || []);
 
     return card;
@@ -166,7 +163,7 @@
   function appendReply(repliesEl, qid, r) {
     const li = document.createElement("div");
     li.className = "bg-gray-50 rounded-xl px-3 py-2 text-sm flex justify-between items-center";
-    li.innerHTML = `<span><span class="font-medium text-blue-700">${escapeHTML(r.userId || "Anonymous")}:</span> ${escapeHTML(r.text)}</span>`;
+    li.innerHTML = `<span>${escapeHTML(r.text)}</span>`;
     if (adminToken) {
       const delBtn = document.createElement("button");
       delBtn.textContent = "Delete";
@@ -190,11 +187,26 @@
     const text = qInput.value.trim();
     if (!text) return;
     try {
-      await fetch(BASE_URL + "/api/questions", {
+      const res = await fetch(BASE_URL + "/api/questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, userId: tempUserId }), // <--- added userId here
+        body: JSON.stringify({ text }),
       });
+      if (!res.ok) {
+        if (res.status === 503) {
+          const data = await res.json().catch(() => ({}));
+          setMaintenanceUI({
+            status: true,
+            message: data.message || maintenance.message,
+            logoUrl: data.logoUrl ?? maintenance.logoUrl,
+            until: data.until ?? null
+          });
+          alert("🚧 Server under maintenance. Try later.");
+        } else {
+          alert("Create failed");
+        }
+        return;
+      }
       qInput.value = "";
     } catch {
       alert("Failed to post. Check connection.");
@@ -205,20 +217,275 @@
     const text = input.value.trim();
     if (!text) return;
     try {
-      await fetch(BASE_URL + `/api/questions/${qid}/replies`, {
+      const res = await fetch(BASE_URL + `/api/questions/${qid}/replies`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, userId: tempUserId }), // <--- added userId here
+        body: JSON.stringify({ text }),
       });
+      if (!res.ok) {
+        if (res.status === 503) {
+          const data = await res.json().catch(() => ({}));
+          setMaintenanceUI({
+            status: true,
+            message: data.message || maintenance.message,
+            logoUrl: data.logoUrl ?? maintenance.logoUrl,
+            until: data.until ?? null
+          });
+          alert("🚧 Server under maintenance. Try later.");
+        } else {
+          alert("Reply failed");
+        }
+        return;
+      }
       input.value = "";
     } catch {
       alert("Failed to send reply. Check connection.");
     }
   }
 
-  // ... All other existing logic stays exactly the same ...
-  // WebSocket, admin login, delete, maintenance, fetchMembers etc.
+  // WebSocket
+  let sock;
+  function connectWS() {
+    setStatus(false);
+    sock = new SockJS(WS_URL);
+    sock.onopen = () => setStatus(true);
+    sock.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === "new-question") prependQuestion(msg.payload);
+        else if (msg.type === "new-reply") addReply(msg.payload.questionId, msg.payload.reply);
+        else if (msg.type === "delete-question") removeQuestion(msg.payload.id);
+        else if (msg.type === "delete-reply") removeReply(msg.payload.questionId, msg.payload.replyId);
+        else if (msg.type === "clear-all") fetchQuestions();
+        else if (msg.type === "maintenance") setMaintenanceUI(msg.payload);
+      } catch {}
+    };
+    sock.onclose = () => {
+      setStatus(false);
+      setTimeout(connectWS, 1500);
+    };
+  }
 
+  function prependQuestion(q) {
+    emptyEl.style.display = "none";
+    qList.prepend(questionCard(q));
+    setMaintenanceUI(maintenance);
+  }
+  function addReply(qid, reply) {
+    const card = [...qList.children].find((el) => el.dataset.qid === qid);
+    if (!card) return fetchQuestions();
+    const repliesEl = card.querySelector("[data-replies]");
+    appendReply(repliesEl, qid, reply);
+    setMaintenanceUI(maintenance);
+  }
+  function removeQuestion(qid) {
+    const card = [...qList.children].find((el) => el.dataset.qid === qid);
+    if (card) card.remove();
+    if (qList.children.length === 0) emptyEl.style.display = "";
+  }
+  function removeReply(qid, rid) {
+    fetchQuestions();
+  }
+
+  // Admin functions
+  async function deleteQuestion(qid) {
+    if (!adminToken) return;
+    if (!confirm("Delete this question?")) return;
+    try {
+      const res = await fetch(BASE_URL + `/api/questions/${qid}`, {
+        method: "DELETE",
+        headers: { Authorization: "Bearer " + adminToken },
+      });
+      if (!res.ok) throw new Error();
+      fetchQuestions();
+    } catch {
+      alert("❌ Failed to delete question");
+    }
+  }
+  async function deleteReply(qid, rid) {
+    if (!adminToken) return;
+    if (!confirm("Delete this reply?")) return;
+    try {
+      const res = await fetch(BASE_URL + `/api/questions/${qid}/replies/${rid}`, {
+        method: "DELETE",
+        headers: { Authorization: "Bearer " + adminToken },
+      });
+      if (!res.ok) throw new Error();
+      fetchQuestions();
+    } catch {
+      alert("❌ Failed to delete reply");
+    }
+  }
+
+  function renderAdminDelete(card, qid) {
+    const adminActions = card.querySelector("[data-admin-actions]");
+    adminActions.innerHTML = "";
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "Delete";
+    delBtn.className = "text-xs text-red-600 hover:text-red-800 underline";
+    delBtn.addEventListener("click", () => deleteQuestion(qid));
+    adminActions.appendChild(delBtn);
+  }
+
+  // Admin modal
+  const adminModal = document.getElementById("adminModal");
+  const adminPasswordInput = document.getElementById("adminPasswordInput");
+  const adminCancelBtn = document.getElementById("adminCancelBtn");
+  const adminSubmitBtn = document.getElementById("adminSubmitBtn");
+
+  function showAdminModal() {
+    adminPasswordInput.value = "";
+    adminModal.classList.remove("hidden");
+    adminPasswordInput.focus();
+  }
+  adminLoginBtn.addEventListener("click", showAdminModal);
+  adminCancelBtn.addEventListener("click", () => adminModal.classList.add("hidden"));
+
+  async function loginAdmin(password) {
+    if (!password) return alert("Please enter password");
+    try {
+      const res = await fetch(BASE_URL + "/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: "admin", password })
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      adminToken = data.token; // memory only
+      alert("✅ Admin logged in");
+      clearAllBtn.classList.remove("hidden");
+      maintenanceBtn.classList.remove("hidden");
+      adminModal.classList.add("hidden");
+
+      // fetch members and maintenance status
+      fetchAdminMembers();
+      fetchMaintenanceStatus();
+    } catch {
+      alert("❌ Admin login failed");
+    }
+  }
+
+  adminSubmitBtn.addEventListener("click", () => loginAdmin(adminPasswordInput.value.trim()));
+  adminPasswordInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") loginAdmin(adminPasswordInput.value.trim());
+  });
+
+  // Clear all (DELETE /api/questions)
+  clearAllBtn.addEventListener("click", async () => {
+    if (!adminToken) return alert("Not logged in as admin");
+    if (!confirm("Clear ALL questions and replies?")) return;
+    try {
+      const res = await fetch(BASE_URL + "/api/questions", {
+        method: "DELETE",
+        headers: { Authorization: "Bearer " + adminToken },
+      });
+      if (!res.ok) throw new Error();
+      fetchQuestions();
+      alert("✅ All questions cleared");
+    } catch {
+      alert("❌ Failed to clear questions");
+    }
+  });
+
+  // Toggle maintenance controls panel
+  maintenanceBtn.addEventListener("click", () => {
+    maintenancePanel.classList.toggle("hidden");
+  });
+
+  // Enable maintenance (apply)
+  applyMaintBtn.addEventListener("click", async () => {
+    if (!adminToken) return alert("Not logged in as admin");
+    const durationVal = maintDuration.value.trim();
+    const durationMinutes = durationVal === "" ? undefined : Number(durationVal);
+
+    try {
+      const res = await fetch(BASE_URL + "/api/admin/maintenance", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + adminToken
+        },
+        body: JSON.stringify({
+          status: true,
+          message: maintMessage.value.trim() || undefined,
+          logoUrl: maintLogo.value.trim() || undefined,
+          durationMinutes
+        })
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setMaintenanceUI(data);
+      alert("🚧 Maintenance enabled. All users were disconnected.");
+    } catch {
+      alert("❌ Failed to enable maintenance");
+    }
+  });
+
+  // Disable maintenance
+  disableMaintBtn.addEventListener("click", async () => {
+    if (!adminToken) return alert("Not logged in as admin");
+    try {
+      const res = await fetch(BASE_URL + "/api/admin/maintenance", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + adminToken
+        },
+        body: JSON.stringify({ status: false })
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setMaintenanceUI(data);
+      alert("✅ Maintenance disabled");
+    } catch {
+      alert("❌ Failed to disable maintenance");
+    }
+  });
+
+  async function fetchMaintenanceStatus() {
+    try {
+      const res = await fetch(BASE_URL + "/api/admin/maintenance", {
+        headers: { Authorization: "Bearer " + adminToken }
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setMaintenanceUI(data);
+
+      // pre-fill controls with current values
+      maintMessage.value = data.message || "";
+      maintLogo.value = data.logoUrl || "";
+      maintDuration.value = ""; // leave blank by default
+    } catch {
+      // ignore if not admin or error
+    }
+  }
+
+  // Members list + count (admin only)
+  async function fetchAdminMembers() {
+    try {
+      const res = await fetch(BASE_URL + "/api/admin/members", {
+        headers: { "Authorization": `Bearer ${adminToken}` }
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+
+      document.getElementById("totalMembersCount").textContent = data.totalMembers;
+
+      const membersList = document.getElementById("membersList");
+      membersList.innerHTML = "";
+      data.members.forEach(m => {
+        const li = document.createElement("li");
+        li.textContent = m.id || "Anonymous";
+        membersList.appendChild(li);
+      });
+
+      document.getElementById("adminMembers").classList.remove("hidden");
+    } catch (e) {
+      console.error("❌ Failed to fetch members:", e);
+    }
+  }
+
+  // Init
   adminToken = null;
   clearAllBtn.classList.add("hidden");
   maintenanceBtn.classList.add("hidden");
