@@ -302,21 +302,20 @@
   });
 
   // Fetch total members
-  async function fetchAdminMembers() {
-    try {
-      const res = await fetch(BASE_URL + "/api/admin/members", {
-        headers: { Authorization: "Bearer " + adminToken },
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      // update members count in modal
-      document.getElementById("totalMembersCount").textContent = data.totalMembers;
-      document.getElementById("adminMembers").classList.remove("hidden");
-    } catch (e) {
-      console.error(e);
-    }
-  }
+  // Fetch total members
+async function fetchAdminMembers() {
+  try {
+    const res = await fetch(BASE_URL + "/api/members/count"); // ✅ public endpoint
+    if (!res.ok) throw new Error();
+    const data = await res.json();
 
+    // update members count in modal
+    document.getElementById("totalMembersCount").textContent = data.totalMembers;
+    document.getElementById("adminMembers").classList.remove("hidden");
+  } catch (e) {
+    console.error("❌ Failed to fetch members:", e);
+  }
+}
   // Init (⚡ reset admin every load)
   adminToken = null;
   clearAllBtn.classList.add("hidden");
