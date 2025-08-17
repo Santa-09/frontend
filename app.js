@@ -267,7 +267,7 @@
       });
       if (!res.ok) throw new Error();
       const data = await res.json();
-      adminToken = data.token; // ✅ only memory
+      adminToken = data.token; // ✅ memory only, resets on refresh
       alert("✅ Admin logged in");
       clearAllBtn.classList.remove("hidden");
       fetchQuestions();
@@ -317,8 +317,10 @@
     }
   }
 
-  // Init (⚡ no auto-login anymore)
+  // Init (⚡ reset admin every load)
+  adminToken = null;
   clearAllBtn.classList.add("hidden");
+  document.getElementById("adminMembers").classList.add("hidden");
   fetchQuestions();
   connectWS();
 })();
