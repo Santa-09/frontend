@@ -1,48 +1,128 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Anonymous Classroom Q&A</title>
+
+  <!-- Tailwind config MUST be defined before the CDN script -->
+  <script>
+    window.tailwind = {
+      config: {
+        darkMode: 'class'
+      }
+    }
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+    rel="stylesheet"
+  >
   <style>
     :root{ --ring: #2b5cff; }
     body{ font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
     .card{ box-shadow: 0 10px 25px rgba(0,0,0,.06); }
     .ring-focus:focus{ outline: none; box-shadow: 0 0 0 4px rgba(43,92,255,.25); }
+    .slide-in {
+      transition: transform .25s ease, opacity .25s ease;
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    .slide-in.open {
+      transform: translateX(0);
+      opacity: 1;
+    }
   </style>
 </head>
-<body class="bg-gray-50 text-gray-800 relative">
+
+<!-- Set light/dark styles on body using Tailwind class strategy -->
+<body class="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-100 relative">
 
   <!-- Admin Login Button -->
-  <button id="adminLoginBtn" class="bg-gray-800 text-white px-4 py-2 rounded-xl hover:bg-black text-sm fixed top-5 right-5 z-50">
+  <button id="adminLoginBtn"
+    class="bg-gray-800 text-white px-4 py-2 rounded-xl hover:bg-black text-sm fixed top-5 right-5 z-50">
     Admin Login
   </button>
 
   <!-- Admin Clear All Button -->
-  <button id="clearAllBtn" class="bg-red-600 text-white px-4 py-2 rounded-xl hover:bg-red-700 text-sm fixed top-16 right-5 z-50 hidden">
+  <button id="clearAllBtn"
+    class="bg-red-600 text-white px-4 py-2 rounded-xl hover:bg-red-700 text-sm fixed top-16 right-5 z-50 hidden">
     Clear All
   </button>
 
   <!-- Admin Maintenance Toggle Panel Button -->
-  <button id="maintenanceBtn" class="bg-yellow-600 text-white px-4 py-2 rounded-xl hover:bg-yellow-700 text-sm fixed top-28 right-5 z-50 hidden">
+  <button id="maintenanceBtn"
+    class="bg-yellow-600 text-white px-4 py-2 rounded-xl hover:bg-yellow-700 text-sm fixed top-28 right-5 z-50 hidden">
     Maintenance Controls
   </button>
 
+  <!-- ===== Settings Sidebar Toggle (User) ===== -->
+  <button id="openSettingsBtn"
+    class="fixed top-5 left-5 z-50 px-3 py-2 rounded-xl text-sm bg-gray-200 hover:bg-gray-300 text-gray-800
+           dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-100 shadow">
+    ☰ Settings
+  </button>
+
+  <!-- ===== Settings Sidebar (slides in from right) ===== -->
+  <div id="settingsOverlay"
+       class="fixed inset-0 bg-black/40 hidden z-50"></div>
+
+  <aside id="settingsSidebar"
+         class="fixed right-0 top-0 h-full w-80 bg-white dark:bg-gray-800 shadow-2xl z-50 slide-in p-5">
+    <div class="flex items-center justify-between">
+      <h2 class="text-xl font-semibold">⚙️ Settings</h2>
+      <button id="closeSettingsBtn"
+              class="rounded-lg px-2 py-1 bg-gray-200 hover:bg-gray-300 text-gray-800
+                     dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-100">
+        ✖
+      </button>
+    </div>
+
+    <div class="mt-6 space-y-5">
+      <div>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-1">Theme</p>
+        <button id="themeToggleBtn"
+                class="w-full justify-center bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900
+                       px-4 py-2 rounded-xl hover:opacity-90">
+          🌓 Toggle Dark / Light
+        </button>
+        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+          Saved on this device only.
+        </p>
+      </div>
+
+      <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+        <p class="text-sm text-gray-500 dark:text-gray-400">Temporary Username</p>
+        <p id="currentTempUser" class="mt-1 font-semibold"></p>
+        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+          This is automatically generated on first visit and used for your posts.
+        </p>
+      </div>
+    </div>
+  </aside>
+
   <!-- Maintenance Controls Panel -->
-  <div id="maintenancePanel" class="hidden fixed top-40 right-5 z-50 bg-white border border-gray-200 rounded-2xl p-4 w-80 shadow-xl">
+  <div id="maintenancePanel"
+       class="hidden fixed top-40 right-5 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700
+              rounded-2xl p-4 w-80 shadow-xl">
     <h3 class="font-semibold mb-2">Maintenance Controls</h3>
-    <label class="text-sm text-gray-600">Duration (minutes, optional)</label>
-    <input id="maintDuration" type="number" min="0" placeholder="e.g. 5" class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-2 focus:ring-2 focus:ring-blue-400 outline-none">
+    <label class="text-sm text-gray-600 dark:text-gray-300">Duration (minutes, optional)</label>
+    <input id="maintDuration" type="number" min="0" placeholder="e.g. 5"
+           class="w-full border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100
+                  rounded-lg px-3 py-2 mb-2 focus:ring-2 focus:ring-blue-400 outline-none">
 
-    <label class="text-sm text-gray-600">Custom Message</label>
-    <input id="maintMessage" type="text" placeholder="e.g. 🚧 Scheduled update in progress" class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-2 focus:ring-2 focus:ring-blue-400 outline-none">
+    <label class="text-sm text-gray-600 dark:text-gray-300">Custom Message</label>
+    <input id="maintMessage" type="text" placeholder="e.g. 🚧 Scheduled update in progress"
+           class="w-full border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100
+                  rounded-lg px-3 py-2 mb-2 focus:ring-2 focus:ring-blue-400 outline-none">
 
-    <label class="text-sm text-gray-600">Logo URL (optional)</label>
-    <input id="maintLogo" type="url" placeholder="https://example.com/logo.png" class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:ring-2 focus:ring-blue-400 outline-none">
+    <label class="text-sm text-gray-600 dark:text-gray-300">Logo URL (optional)</label>
+    <input id="maintLogo" type="url" placeholder="https://example.com/logo.png"
+           class="w-full border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100
+                  rounded-lg px-3 py-2 mb-3 focus:ring-2 focus:ring-blue-400 outline-none">
 
     <div class="flex items-center justify-between gap-2">
       <button id="applyMaintBtn" class="flex-1 bg-yellow-600 text-white px-3 py-2 rounded-lg hover:bg-yellow-700">Enable</button>
@@ -54,19 +134,20 @@
 
   <!-- Admin Login Modal -->
   <div id="adminModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-    <div class="bg-white p-6 rounded-xl shadow-xl w-80">
+    <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl w-80">
       <h2 class="text-lg font-semibold mb-4">Admin Login</h2>
       <input id="adminPasswordInput" type="password" placeholder="Enter password"
-        class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-2 focus:ring-2 focus:ring-blue-400 outline-none">
+        class="w-full border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100
+               rounded-lg px-3 py-2 mb-2 focus:ring-2 focus:ring-blue-400 outline-none">
 
       <!-- Members -->
       <div id="adminMembers" class="hidden mb-4">
-        <p class="text-gray-600">Total Members: <span id="totalMembersCount">0</span></p>
-        <ul id="membersList" class="list-disc pl-5 text-sm text-gray-700 mt-2"></ul>
+        <p class="text-gray-600 dark:text-gray-300">Total Members: <span id="totalMembersCount">0</span></p>
+        <ul id="membersList" class="list-disc pl-5 text-sm text-gray-700 dark:text-gray-200 mt-2"></ul>
       </div>
 
       <div class="flex justify-end gap-2">
-        <button id="adminCancelBtn" class="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">Cancel</button>
+        <button id="adminCancelBtn" class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600">Cancel</button>
         <button id="adminSubmitBtn" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white">Login</button>
       </div>
     </div>
@@ -75,32 +156,43 @@
   <div class="max-w-4xl mx-auto px-4 py-10">
     <header class="text-center mb-10">
       <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight">Anonymous Classroom Q&amp;A</h1>
-      <p class="text-gray-500 mt-2">Ask questions freely without revealing your identity</p>
+      <p class="text-gray-500 dark:text-gray-400 mt-2">
+        Ask questions freely without revealing your identity
+      </p>
+      <p class="mt-1 text-xs text-gray-400" id="headerUserLine"></p>
 
       <!-- Connection status -->
-      <div id="status" class="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-full mt-5">
+      <div id="status" class="inline-flex items-center gap-2 bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200
+                              px-4 py-2 rounded-full mt-5">
         <span class="inline-block w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>
         <span id="statusText">Connecting...</span>
       </div>
 
       <!-- Maintenance banner -->
-      <div id="maintenanceBanner" class="hidden mt-4 px-4 py-3 rounded-xl bg-yellow-100 text-yellow-800 font-semibold inline-flex items-center gap-3">
+      <div id="maintenanceBanner"
+           class="hidden mt-4 px-4 py-3 rounded-xl bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200
+                  font-semibold inline-flex items-center gap-3">
         <img id="maintenanceLogo" src="" alt="Maintenance Logo" class="hidden w-8 h-8 object-contain">
         <span id="maintenanceText">🚧 Server under maintenance. Chat is temporarily disabled.</span>
       </div>
-      <p id="maintenanceTimerNote" class="hidden text-xs text-yellow-700 mt-1"></p>
+      <p id="maintenanceTimerNote" class="hidden text-xs text-yellow-700 dark:text-yellow-300 mt-1"></p>
     </header>
 
-    <section class="card bg-white rounded-2xl p-6 md:p-8 mb-8">
+    <section class="card bg-white dark:bg-gray-800 rounded-2xl p-6 md:p-8 mb-8">
       <div class="flex flex-col md:flex-row items-stretch gap-3">
-        <input id="questionInput" type="text" placeholder="What's your question?" class="flex-1 border border-gray-200 rounded-xl px-4 py-3 ring-focus focus:border-blue-400">
-        <button id="askBtn" class="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold px-6 py-3 rounded-xl transition">Ask</button>
+        <input id="questionInput" type="text" placeholder="What's your question?"
+               class="flex-1 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 ring-focus
+                      focus:border-blue-400 dark:bg-gray-900 dark:text-gray-100">
+        <button id="askBtn"
+                class="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold px-6 py-3 rounded-xl transition">
+          Ask
+        </button>
       </div>
-      <p class="text-gray-400 text-sm mt-2">All questions and replies are anonymous</p>
+      <p class="text-gray-400 dark:text-gray-500 text-sm mt-2">All questions and replies are anonymous</p>
     </section>
 
     <section id="listEmpty" class="text-center py-16 text-gray-400">
-      <div class="mx-auto w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+      <div class="mx-auto w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
         <span class="text-2xl">💬</span>
       </div>
       <p class="text-lg">No questions yet</p>
