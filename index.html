@@ -27,10 +27,30 @@
     Clear All
   </button>
 
-  <!-- Admin Maintenance Toggle -->
+  <!-- Admin Maintenance Toggle Panel Button -->
   <button id="maintenanceBtn" class="bg-yellow-600 text-white px-4 py-2 rounded-xl hover:bg-yellow-700 text-sm fixed top-28 right-5 z-50 hidden">
-    Enable Maintenance
+    Maintenance Controls
   </button>
+
+  <!-- Maintenance Controls Panel -->
+  <div id="maintenancePanel" class="hidden fixed top-40 right-5 z-50 bg-white border border-gray-200 rounded-2xl p-4 w-80 shadow-xl">
+    <h3 class="font-semibold mb-2">Maintenance Controls</h3>
+    <label class="text-sm text-gray-600">Duration (minutes, optional)</label>
+    <input id="maintDuration" type="number" min="0" placeholder="e.g. 5" class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-2 focus:ring-2 focus:ring-blue-400 outline-none">
+
+    <label class="text-sm text-gray-600">Custom Message</label>
+    <input id="maintMessage" type="text" placeholder="e.g. 🚧 Scheduled update in progress" class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-2 focus:ring-2 focus:ring-blue-400 outline-none">
+
+    <label class="text-sm text-gray-600">Logo URL (optional)</label>
+    <input id="maintLogo" type="url" placeholder="https://example.com/logo.png" class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:ring-2 focus:ring-blue-400 outline-none">
+
+    <div class="flex items-center justify-between gap-2">
+      <button id="applyMaintBtn" class="flex-1 bg-yellow-600 text-white px-3 py-2 rounded-lg hover:bg-yellow-700">Enable</button>
+      <button id="disableMaintBtn" class="flex-1 bg-gray-700 text-white px-3 py-2 rounded-lg hover:bg-black">Disable</button>
+    </div>
+
+    <p id="maintUntilText" class="text-xs text-gray-500 mt-2 hidden"></p>
+  </div>
 
   <!-- Admin Login Modal -->
   <div id="adminModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
@@ -64,9 +84,11 @@
       </div>
 
       <!-- Maintenance banner -->
-      <div id="maintenanceBanner" class="hidden mt-4 px-4 py-2 rounded-full bg-yellow-100 text-yellow-800 font-semibold inline-block">
-        🚧 Server under maintenance. Chat is temporarily disabled.
+      <div id="maintenanceBanner" class="hidden mt-4 px-4 py-3 rounded-xl bg-yellow-100 text-yellow-800 font-semibold inline-flex items-center gap-3">
+        <img id="maintenanceLogo" src="" alt="Maintenance Logo" class="hidden w-8 h-8 object-contain">
+        <span id="maintenanceText">🚧 Server under maintenance. Chat is temporarily disabled.</span>
       </div>
+      <p id="maintenanceTimerNote" class="hidden text-xs text-yellow-700 mt-1"></p>
     </header>
 
     <section class="card bg-white rounded-2xl p-6 md:p-8 mb-8">
