@@ -9,11 +9,29 @@
   const adminLoginBtn = document.getElementById("adminLoginBtn");
   const clearAllBtn = document.getElementById("clearAllBtn");
   const maintenanceBtn = document.getElementById("maintenanceBtn");
+  const maintenancePanel = document.getElementById("maintenancePanel");
+  const maintDuration = document.getElementById("maintDuration");
+  const maintMessage = document.getElementById("maintMessage");
+  const maintLogo = document.getElementById("maintLogo");
+  const applyMaintBtn = document.getElementById("applyMaintBtn");
+  const disableMaintBtn = document.getElementById("disableMaintBtn");
+  const maintUntilText = document.getElementById("maintUntilText");
+
   const maintenanceBanner = document.getElementById("maintenanceBanner");
+  const maintenanceText = document.getElementById("maintenanceText");
+  const maintenanceLogo = document.getElementById("maintenanceLogo");
+  const maintenanceTimerNote = document.getElementById("maintenanceTimerNote");
 
   // admin state (reset every refresh)
   let adminToken = null;
-  let maintenance = false;
+
+  // maintenance local state
+  let maintenance = {
+    status: false,
+    message: "Server under maintenance. Please try again later.",
+    logoUrl: "",
+    until: null
+  };
 
   // Auto-detect backend URL
   function computeBackendUrl() {
@@ -34,32 +52,52 @@
     statusText.textContent = connected ? "Connected" : "Connecting...";
   }
 
-  function setMaintenanceUI(on) {
-    maintenance = !!on;
-    // Banner
-    maintenanceBanner.classList.toggle("hidden", !maintenance);
-    // Disable main ask input
-    qInput.disabled = maintenance;
-    askBtn.disabled = maintenance;
-    qInput.classList.toggle("opacity-60", maintenance);
-    askBtn.classList.toggle("opacity-60", maintenance);
+  function setMaintenanceUI(state) {
+    maintenance = { ...maintenance, ...state };
 
-    // Disable all reply inputs & buttons
+    const on = !!maintenance.status;
+    maintenanceBanner.classList.toggle("hidden", !on);
+
+    // text & logo
+    maintenanceText.textContent = maintenance.message || "🚧 Server under maintenance. Chat is temporarily disabled.";
+    if (maintenance.logoUrl) {
+      maintenanceLogo.src = maintenance.logoUrl;
+      maintenanceLogo.classList.remove("hidden");
+    } else {
+      maintenanceLogo.classList.add("hidden");
+      maintenanceLogo.removeAttribute("src");
+    }
+
+    // show "until" if present
+    if (maintenance.until) {
+      const d = new Date(maintenance.until);
+      if (!isNaN(d)) {
+        maintenanceTimerNote.textContent = `Maintenance will end at ${d.toLocaleString()}`;
+        maintenanceTimerNote.classList.remove("hidden");
+        maintUntilText.textContent = `Ends at: ${d.toLocaleString()}`;
+        maintUntilText.classList.remove("hidden");
+      }
+    } else {
+      maintenanceTimerNote.classList.add("hidden");
+      maintUntilText.classList.add("hidden");
+    }
+
+    // disable inputs everywhere
+    qInput.disabled = on;
+    askBtn.disabled = on;
+    qInput.classList.toggle("opacity-60", on);
+    askBtn.classList.toggle("opacity-60", on);
+
     document.querySelectorAll('[data-replies]').forEach(container => {
       const parent = container.closest('[data-qid]');
       if (!parent) return;
       const input = parent.querySelector('input[type="text"]');
       const btn = parent.querySelector('button');
-      if (input) input.disabled = maintenance;
-      if (btn) btn.disabled = maintenance;
-      if (input) input.classList.toggle("opacity-60", maintenance);
-      if (btn) btn.classList.toggle("opacity-60", maintenance);
+      if (input) input.disabled = on;
+      if (btn) btn.disabled = on;
+      if (input) input.classList.toggle("opacity-60", on);
+      if (btn) btn.classList.toggle("opacity-60", on);
     });
-
-    // Admin button text
-    if (adminToken) {
-      maintenanceBtn.textContent = maintenance ? "Disable Maintenance" : "Enable Maintenance";
-    }
   }
 
   async function fetchQuestions() {
@@ -156,6 +194,13 @@
       });
       if (!res.ok) {
         if (res.status === 503) {
+          const data = await res.json().catch(() => ({}));
+          setMaintenanceUI({
+            status: true,
+            message: data.message || maintenance.message,
+            logoUrl: data.logoUrl ?? maintenance.logoUrl,
+            until: data.until ?? null
+          });
           alert("🚧 Server under maintenance. Try later.");
         } else {
           alert("Create failed");
@@ -179,6 +224,13 @@
       });
       if (!res.ok) {
         if (res.status === 503) {
+          const data = await res.json().catch(() => ({}));
+          setMaintenanceUI({
+            status: true,
+            message: data.message || maintenance.message,
+            logoUrl: data.logoUrl ?? maintenance.logoUrl,
+            until: data.until ?? null
+          });
           alert("🚧 Server under maintenance. Try later.");
         } else {
           alert("Reply failed");
@@ -205,7 +257,7 @@
         else if (msg.type === "delete-question") removeQuestion(msg.payload.id);
         else if (msg.type === "delete-reply") removeReply(msg.payload.questionId, msg.payload.replyId);
         else if (msg.type === "clear-all") fetchQuestions();
-        else if (msg.type === "maintenance") setMaintenanceUI(msg.payload.status);
+        else if (msg.type === "maintenance") setMaintenanceUI(msg.payload);
       } catch {}
     };
     sock.onclose = () => {
@@ -232,7 +284,6 @@
     if (qList.children.length === 0) emptyEl.style.display = "";
   }
   function removeReply(qid, rid) {
-    // Simplest reliable refresh
     fetchQuestions();
   }
 
@@ -266,7 +317,7 @@
     }
   }
 
-  function renderAdminDelete(card, qid, repliesEl, repliesList) {
+  function renderAdminDelete(card, qid) {
     const adminActions = card.querySelector("[data-admin-actions]");
     adminActions.innerHTML = "";
     const delBtn = document.createElement("button");
@@ -304,13 +355,10 @@
       alert("✅ Admin logged in");
       clearAllBtn.classList.remove("hidden");
       maintenanceBtn.classList.remove("hidden");
-      fetchQuestions();
       adminModal.classList.add("hidden");
 
-      // fetch members after login
+      // fetch members and maintenance status
       fetchAdminMembers();
-
-      // fetch maintenance status
       fetchMaintenanceStatus();
     } catch {
       alert("❌ Admin login failed");
@@ -339,8 +387,42 @@
     }
   });
 
-  // Maintenance toggle
-  maintenanceBtn.addEventListener("click", async () => {
+  // Toggle maintenance controls panel
+  maintenanceBtn.addEventListener("click", () => {
+    maintenancePanel.classList.toggle("hidden");
+  });
+
+  // Enable maintenance (apply)
+  applyMaintBtn.addEventListener("click", async () => {
+    if (!adminToken) return alert("Not logged in as admin");
+    const durationVal = maintDuration.value.trim();
+    const durationMinutes = durationVal === "" ? undefined : Number(durationVal);
+
+    try {
+      const res = await fetch(BASE_URL + "/api/admin/maintenance", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + adminToken
+        },
+        body: JSON.stringify({
+          status: true,
+          message: maintMessage.value.trim() || undefined,
+          logoUrl: maintLogo.value.trim() || undefined,
+          durationMinutes
+        })
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setMaintenanceUI(data);
+      alert("🚧 Maintenance enabled. All users were disconnected.");
+    } catch {
+      alert("❌ Failed to enable maintenance");
+    }
+  });
+
+  // Disable maintenance
+  disableMaintBtn.addEventListener("click", async () => {
     if (!adminToken) return alert("Not logged in as admin");
     try {
       const res = await fetch(BASE_URL + "/api/admin/maintenance", {
@@ -349,13 +431,14 @@
           "Content-Type": "application/json",
           Authorization: "Bearer " + adminToken
         },
-        body: JSON.stringify({ status: !maintenance })
+        body: JSON.stringify({ status: false })
       });
       if (!res.ok) throw new Error();
       const data = await res.json();
-      setMaintenanceUI(data.status);
+      setMaintenanceUI(data);
+      alert("✅ Maintenance disabled");
     } catch {
-      alert("❌ Failed to toggle maintenance");
+      alert("❌ Failed to disable maintenance");
     }
   });
 
@@ -366,7 +449,12 @@
       });
       if (!res.ok) throw new Error();
       const data = await res.json();
-      setMaintenanceUI(data.status);
+      setMaintenanceUI(data);
+
+      // pre-fill controls with current values
+      maintMessage.value = data.message || "";
+      maintLogo.value = data.logoUrl || "";
+      maintDuration.value = ""; // leave blank by default
     } catch {
       // ignore if not admin or error
     }
@@ -401,6 +489,7 @@
   adminToken = null;
   clearAllBtn.classList.add("hidden");
   maintenanceBtn.classList.add("hidden");
+  maintenancePanel.classList.add("hidden");
   document.getElementById("adminMembers").classList.add("hidden");
   fetchQuestions();
   connectWS();
