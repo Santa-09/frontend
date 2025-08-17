@@ -22,9 +22,14 @@
     Admin Login
   </button>
 
-  <!-- Admin Clear All Button (hidden by default) -->
+  <!-- Admin Clear All Button -->
   <button id="clearAllBtn" class="bg-red-600 text-white px-4 py-2 rounded-xl hover:bg-red-700 text-sm fixed top-16 right-5 z-50 hidden">
     Clear All
+  </button>
+
+  <!-- Admin Maintenance Toggle -->
+  <button id="maintenanceBtn" class="bg-yellow-600 text-white px-4 py-2 rounded-xl hover:bg-yellow-700 text-sm fixed top-28 right-5 z-50 hidden">
+    Enable Maintenance
   </button>
 
   <!-- Admin Login Modal -->
@@ -51,9 +56,16 @@
     <header class="text-center mb-10">
       <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight">Anonymous Classroom Q&amp;A</h1>
       <p class="text-gray-500 mt-2">Ask questions freely without revealing your identity</p>
+
+      <!-- Connection status -->
       <div id="status" class="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-full mt-5">
         <span class="inline-block w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>
         <span id="statusText">Connecting...</span>
+      </div>
+
+      <!-- Maintenance banner -->
+      <div id="maintenanceBanner" class="hidden mt-4 px-4 py-2 rounded-full bg-yellow-100 text-yellow-800 font-semibold inline-block">
+        🚧 Server under maintenance. Chat is temporarily disabled.
       </div>
     </header>
 
