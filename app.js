@@ -8,18 +8,20 @@
 
   const adminLoginBtn = document.getElementById("adminLoginBtn");
   const clearAllBtn = document.getElementById("clearAllBtn");
+  const maintenanceBtn = document.getElementById("maintenanceBtn");
+  const maintenanceBanner = document.getElementById("maintenanceBanner");
 
-  // 🔥 admin state (reset every refresh)
+  // admin state (reset every refresh)
   let adminToken = null;
+  let maintenance = false;
 
-  // 🔥 Auto-detect backend URL
+  // Auto-detect backend URL
   function computeBackendUrl() {
     const hostname = window.location.hostname;
     if (hostname === "localhost" || hostname === "127.0.0.1") {
       return "http://localhost:5000";
     }
-    // fallback to configured value for production
-    return (window.BACKEND_URL || "").replace(/\/+$/,"");
+    return (window.BACKEND_URL || "").replace(/\/+$/, "");
   }
 
   const BASE_URL = computeBackendUrl();
@@ -30,6 +32,34 @@
       connected ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
     }`;
     statusText.textContent = connected ? "Connected" : "Connecting...";
+  }
+
+  function setMaintenanceUI(on) {
+    maintenance = !!on;
+    // Banner
+    maintenanceBanner.classList.toggle("hidden", !maintenance);
+    // Disable main ask input
+    qInput.disabled = maintenance;
+    askBtn.disabled = maintenance;
+    qInput.classList.toggle("opacity-60", maintenance);
+    askBtn.classList.toggle("opacity-60", maintenance);
+
+    // Disable all reply inputs & buttons
+    document.querySelectorAll('[data-replies]').forEach(container => {
+      const parent = container.closest('[data-qid]');
+      if (!parent) return;
+      const input = parent.querySelector('input[type="text"]');
+      const btn = parent.querySelector('button');
+      if (input) input.disabled = maintenance;
+      if (btn) btn.disabled = maintenance;
+      if (input) input.classList.toggle("opacity-60", maintenance);
+      if (btn) btn.classList.toggle("opacity-60", maintenance);
+    });
+
+    // Admin button text
+    if (adminToken) {
+      maintenanceBtn.textContent = maintenance ? "Disable Maintenance" : "Enable Maintenance";
+    }
   }
 
   async function fetchQuestions() {
@@ -50,6 +80,8 @@
     }
     emptyEl.style.display = "none";
     list.forEach((q) => qList.appendChild(questionCard(q)));
+    // Re-apply maintenance state after rendering
+    setMaintenanceUI(maintenance);
   }
 
   function questionCard(q) {
@@ -92,14 +124,12 @@
 
   function appendReply(repliesEl, qid, r) {
     const li = document.createElement("div");
-    li.className =
-      "bg-gray-50 rounded-xl px-3 py-2 text-sm flex justify-between items-center";
+    li.className = "bg-gray-50 rounded-xl px-3 py-2 text-sm flex justify-between items-center";
     li.innerHTML = `<span>${escapeHTML(r.text)}</span>`;
     if (adminToken) {
       const delBtn = document.createElement("button");
       delBtn.textContent = "Delete";
-      delBtn.className =
-        "text-xs text-red-600 hover:text-red-800 ml-2 underline";
+      delBtn.className = "text-xs text-red-600 hover:text-red-800 ml-2 underline";
       delBtn.addEventListener("click", () => deleteReply(qid, r.id));
       li.appendChild(delBtn);
     }
@@ -108,18 +138,12 @@
 
   function escapeHTML(str) {
     return str.replace(/[&<>"']/g, (m) => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#039;",
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
     }[m]));
   }
 
   askBtn.addEventListener("click", sendQuestion);
-  qInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") sendQuestion();
-  });
+  qInput.addEventListener("keypress", (e) => { if (e.key === "Enter") sendQuestion(); });
 
   async function sendQuestion() {
     const text = qInput.value.trim();
@@ -130,7 +154,14 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),
       });
-      if (!res.ok) throw new Error("Create failed");
+      if (!res.ok) {
+        if (res.status === 503) {
+          alert("🚧 Server under maintenance. Try later.");
+        } else {
+          alert("Create failed");
+        }
+        return;
+      }
       qInput.value = "";
     } catch {
       alert("Failed to post. Check connection.");
@@ -146,7 +177,14 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text }),
       });
-      if (!res.ok) throw new Error("Reply failed");
+      if (!res.ok) {
+        if (res.status === 503) {
+          alert("🚧 Server under maintenance. Try later.");
+        } else {
+          alert("Reply failed");
+        }
+        return;
+      }
       input.value = "";
     } catch {
       alert("Failed to send reply. Check connection.");
@@ -162,16 +200,12 @@
     sock.onmessage = (e) => {
       try {
         const msg = JSON.parse(e.data);
-        // ✅ event names aligned with backend
         if (msg.type === "new-question") prependQuestion(msg.payload);
-        else if (msg.type === "new-reply")
-          addReply(msg.payload.questionId, msg.payload.reply);
-        else if (msg.type === "delete-question")
-          removeQuestion(msg.payload.id);
-        else if (msg.type === "delete-reply")
-          removeReply(msg.payload.questionId, msg.payload.replyId);
-        else if (msg.type === "clear-all")
-          fetchQuestions();
+        else if (msg.type === "new-reply") addReply(msg.payload.questionId, msg.payload.reply);
+        else if (msg.type === "delete-question") removeQuestion(msg.payload.id);
+        else if (msg.type === "delete-reply") removeReply(msg.payload.questionId, msg.payload.replyId);
+        else if (msg.type === "clear-all") fetchQuestions();
+        else if (msg.type === "maintenance") setMaintenanceUI(msg.payload.status);
       } catch {}
     };
     sock.onclose = () => {
@@ -183,12 +217,14 @@
   function prependQuestion(q) {
     emptyEl.style.display = "none";
     qList.prepend(questionCard(q));
+    setMaintenanceUI(maintenance);
   }
   function addReply(qid, reply) {
     const card = [...qList.children].find((el) => el.dataset.qid === qid);
     if (!card) return fetchQuestions();
     const repliesEl = card.querySelector("[data-replies]");
     appendReply(repliesEl, qid, reply);
+    setMaintenanceUI(maintenance);
   }
   function removeQuestion(qid) {
     const card = [...qList.children].find((el) => el.dataset.qid === qid);
@@ -196,14 +232,8 @@
     if (qList.children.length === 0) emptyEl.style.display = "";
   }
   function removeReply(qid, rid) {
-    const card = [...qList.children].find((el) => el.dataset.qid === qid);
-    if (!card) return fetchQuestions();
-    const repliesEl = card.querySelector("[data-replies]");
-    [...repliesEl.children].forEach((child) => {
-      // crude match by attached delete handler id text isn't stored, so refetch if needed
-      // (UI will refresh on next fetch anyway)
-    });
-    fetchQuestions(); // simplest reliable refresh
+    // Simplest reliable refresh
+    fetchQuestions();
   }
 
   // Admin functions
@@ -241,17 +271,12 @@
     adminActions.innerHTML = "";
     const delBtn = document.createElement("button");
     delBtn.textContent = "Delete";
-    delBtn.className =
-      "text-xs text-red-600 hover:text-red-800 underline";
+    delBtn.className = "text-xs text-red-600 hover:text-red-800 underline";
     delBtn.addEventListener("click", () => deleteQuestion(qid));
     adminActions.appendChild(delBtn);
-
-    repliesList.forEach((r) => {
-      const li = document.createElement("div");
-      // buttons for each reply will be drawn when appending replies
-    });
   }
 
+  // Admin modal
   const adminModal = document.getElementById("adminModal");
   const adminPasswordInput = document.getElementById("adminPasswordInput");
   const adminCancelBtn = document.getElementById("adminCancelBtn");
@@ -263,9 +288,7 @@
     adminPasswordInput.focus();
   }
   adminLoginBtn.addEventListener("click", showAdminModal);
-  adminCancelBtn.addEventListener("click", () =>
-    adminModal.classList.add("hidden")
-  );
+  adminCancelBtn.addEventListener("click", () => adminModal.classList.add("hidden"));
 
   async function loginAdmin(password) {
     if (!password) return alert("Please enter password");
@@ -277,22 +300,27 @@
       });
       if (!res.ok) throw new Error();
       const data = await res.json();
-      adminToken = data.token; // ✅ memory only, resets on refresh
+      adminToken = data.token; // memory only
       alert("✅ Admin logged in");
       clearAllBtn.classList.remove("hidden");
+      maintenanceBtn.classList.remove("hidden");
       fetchQuestions();
       adminModal.classList.add("hidden");
 
       // fetch members after login
       fetchAdminMembers();
+
+      // fetch maintenance status
+      fetchMaintenanceStatus();
     } catch {
       alert("❌ Admin login failed");
     }
   }
 
-  adminSubmitBtn.addEventListener("click", () =>
-    loginAdmin(adminPasswordInput.value.trim())
-  );
+  adminSubmitBtn.addEventListener("click", () => loginAdmin(adminPasswordInput.value.trim()));
+  adminPasswordInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") loginAdmin(adminPasswordInput.value.trim());
+  });
 
   // Clear all (DELETE /api/questions)
   clearAllBtn.addEventListener("click", async () => {
@@ -311,6 +339,39 @@
     }
   });
 
+  // Maintenance toggle
+  maintenanceBtn.addEventListener("click", async () => {
+    if (!adminToken) return alert("Not logged in as admin");
+    try {
+      const res = await fetch(BASE_URL + "/api/admin/maintenance", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + adminToken
+        },
+        body: JSON.stringify({ status: !maintenance })
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setMaintenanceUI(data.status);
+    } catch {
+      alert("❌ Failed to toggle maintenance");
+    }
+  });
+
+  async function fetchMaintenanceStatus() {
+    try {
+      const res = await fetch(BASE_URL + "/api/admin/maintenance", {
+        headers: { Authorization: "Bearer " + adminToken }
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setMaintenanceUI(data.status);
+    } catch {
+      // ignore if not admin or error
+    }
+  }
+
   // Members list + count (admin only)
   async function fetchAdminMembers() {
     try {
@@ -320,10 +381,8 @@
       if (!res.ok) throw new Error();
       const data = await res.json();
 
-      // Show total
       document.getElementById("totalMembersCount").textContent = data.totalMembers;
 
-      // Show list
       const membersList = document.getElementById("membersList");
       membersList.innerHTML = "";
       data.members.forEach(m => {
@@ -332,16 +391,16 @@
         membersList.appendChild(li);
       });
 
-      // Reveal section
       document.getElementById("adminMembers").classList.remove("hidden");
     } catch (e) {
       console.error("❌ Failed to fetch members:", e);
     }
   }
 
-  // Init (⚡ reset admin every load)
+  // Init
   adminToken = null;
   clearAllBtn.classList.add("hidden");
+  maintenanceBtn.classList.add("hidden");
   document.getElementById("adminMembers").classList.add("hidden");
   fetchQuestions();
   connectWS();
