@@ -303,14 +303,28 @@
 
   // Fetch total members
   // Fetch total members
+// Fetch members list + count
 async function fetchAdminMembers() {
   try {
-    const res = await fetch(BASE_URL + "/api/members/count"); // ✅ public endpoint
+    const res = await fetch(BASE_URL + "/api/admin/members", {
+      headers: { "Authorization": `Bearer ${adminToken}` }
+    });
     if (!res.ok) throw new Error();
     const data = await res.json();
 
-    // update members count in modal
+    // Show total
     document.getElementById("totalMembersCount").textContent = data.totalMembers;
+
+    // Show list
+    const membersList = document.getElementById("membersList");
+    membersList.innerHTML = ""; // clear old
+    data.members.forEach(m => {
+      const li = document.createElement("li");
+      li.textContent = m.name || m.id || "Anonymous"; // adjust to your backend response
+      membersList.appendChild(li);
+    });
+
+    // Reveal section
     document.getElementById("adminMembers").classList.remove("hidden");
   } catch (e) {
     console.error("❌ Failed to fetch members:", e);
