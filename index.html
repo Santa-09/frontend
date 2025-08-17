@@ -22,35 +22,10 @@
     Admin Login
   </button>
 
-  <!-- Admin Clear All Button -->
+  <!-- Admin Clear All Button (hidden by default) -->
   <button id="clearAllBtn" class="bg-red-600 text-white px-4 py-2 rounded-xl hover:bg-red-700 text-sm fixed top-16 right-5 z-50 hidden">
     Clear All
   </button>
-
-  <!-- Admin Maintenance Toggle Panel Button -->
-  <button id="maintenanceBtn" class="bg-yellow-600 text-white px-4 py-2 rounded-xl hover:bg-yellow-700 text-sm fixed top-28 right-5 z-50 hidden">
-    Maintenance Controls
-  </button>
-
-  <!-- Maintenance Controls Panel -->
-  <div id="maintenancePanel" class="hidden fixed top-40 right-5 z-50 bg-white border border-gray-200 rounded-2xl p-4 w-80 shadow-xl">
-    <h3 class="font-semibold mb-2">Maintenance Controls</h3>
-    <label class="text-sm text-gray-600">Duration (minutes, optional)</label>
-    <input id="maintDuration" type="number" min="0" placeholder="e.g. 5" class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-2 focus:ring-2 focus:ring-blue-400 outline-none">
-
-    <label class="text-sm text-gray-600">Custom Message</label>
-    <input id="maintMessage" type="text" placeholder="e.g. 🚧 Scheduled update in progress" class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-2 focus:ring-2 focus:ring-blue-400 outline-none">
-
-    <label class="text-sm text-gray-600">Logo URL (optional)</label>
-    <input id="maintLogo" type="url" placeholder="https://example.com/logo.png" class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:ring-2 focus:ring-blue-400 outline-none">
-
-    <div class="flex items-center justify-between gap-2">
-      <button id="applyMaintBtn" class="flex-1 bg-yellow-600 text-white px-3 py-2 rounded-lg hover:bg-yellow-700">Enable</button>
-      <button id="disableMaintBtn" class="flex-1 bg-gray-700 text-white px-3 py-2 rounded-lg hover:bg-black">Disable</button>
-    </div>
-
-    <p id="maintUntilText" class="text-xs text-gray-500 mt-2 hidden"></p>
-  </div>
 
   <!-- Admin Login Modal -->
   <div id="adminModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
@@ -65,6 +40,20 @@
         <ul id="membersList" class="list-disc pl-5 text-sm text-gray-700 mt-2"></ul>
       </div>
 
+      <!-- Maintenance controls -->
+      <div id="adminMaintenance" class="hidden mb-4">
+        <p class="font-semibold text-gray-700 mb-1">Maintenance Mode</p>
+        <label class="flex items-center gap-2 mb-2">
+          <input type="checkbox" id="maintenanceToggle" class="w-5 h-5">
+          <span>Active</span>
+        </label>
+        <input type="text" id="maintenanceMessage" placeholder="Message for users"
+               class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-2">
+        <input type="number" id="maintenanceDuration" placeholder="Duration (minutes)"
+               class="w-full border border-gray-300 rounded-lg px-3 py-2 mb-2">
+        <button id="setMaintenanceBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Apply</button>
+      </div>
+
       <div class="flex justify-end gap-2">
         <button id="adminCancelBtn" class="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300">Cancel</button>
         <button id="adminSubmitBtn" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white">Login</button>
@@ -76,20 +65,19 @@
     <header class="text-center mb-10">
       <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight">Anonymous Classroom Q&amp;A</h1>
       <p class="text-gray-500 mt-2">Ask questions freely without revealing your identity</p>
-
-      <!-- Connection status -->
-      <div id="status" class="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-full mt-5">
+      <div id="status" class="inline-flex items-center gap-2 bg-blue-100 px-4 py-2 rounded-full mt-5">
         <span class="inline-block w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>
         <span id="statusText">Connecting...</span>
       </div>
-
-      <!-- Maintenance banner -->
-      <div id="maintenanceBanner" class="hidden mt-4 px-4 py-3 rounded-xl bg-yellow-100 text-yellow-800 font-semibold inline-flex items-center gap-3">
-        <img id="maintenanceLogo" src="" alt="Maintenance Logo" class="hidden w-8 h-8 object-contain">
-        <span id="maintenanceText">🚧 Server under maintenance. Chat is temporarily disabled.</span>
-      </div>
-      <p id="maintenanceTimerNote" class="hidden text-xs text-yellow-700 mt-1"></p>
     </header>
+
+    <!-- Dark/Light mode toggle -->
+    <div class="flex items-center gap-2 justify-center mb-6">
+      <label class="flex items-center gap-2">
+        <input type="checkbox" id="themeToggle" class="w-5 h-5">
+        <span>Dark Mode</span>
+      </label>
+    </div>
 
     <section class="card bg-white rounded-2xl p-6 md:p-8 mb-8">
       <div class="flex flex-col md:flex-row items-stretch gap-3">
