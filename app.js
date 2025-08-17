@@ -1,200 +1,327 @@
-// app.js
+(function () {
+  const statusEl = document.getElementById("status");
+  const statusText = document.getElementById("statusText");
+  const qInput = document.getElementById("questionInput");
+  const askBtn = document.getElementById("askBtn");
+  const qList = document.getElementById("questions");
+  const emptyEl = document.getElementById("listEmpty");
 
-let socket;
-let isAdmin = false; // track admin state
-const backendUrl = window.BACKEND_URL;
+  const adminLoginBtn = document.getElementById("adminLoginBtn");
+  const clearAllBtn = document.getElementById("clearAllBtn");
 
-// Elements
-const statusText = document.getElementById("statusText");
-const questionInput = document.getElementById("questionInput");
-const askBtn = document.getElementById("askBtn");
-const questionsContainer = document.getElementById("questions");
-const listEmpty = document.getElementById("listEmpty");
-const adminLoginBtn = document.getElementById("adminLoginBtn");
-const clearAllBtn = document.getElementById("clearAllBtn");
-const adminModal = document.getElementById("adminModal");
-const adminPasswordInput = document.getElementById("adminPasswordInput");
-const adminSubmitBtn = document.getElementById("adminSubmitBtn");
-const adminCancelBtn = document.getElementById("adminCancelBtn");
-const totalMembersCount = document.getElementById("totalMembersCount");
-const adminMembers = document.getElementById("adminMembers");
+  let adminToken = localStorage.getItem("adminToken") || null;
 
-// -------------------- SOCKET --------------------
-function connectSocket() {
-  socket = new SockJS(`${backendUrl}/ws`);
-
-  socket.onopen = () => {
-    statusText.textContent = "Connected";
-    statusText.parentElement.classList.remove("bg-blue-100", "text-blue-700");
-    statusText.parentElement.classList.add("bg-green-100", "text-green-700");
-  };
-
-  socket.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    if (data.type === "questions") {
-      renderQuestions(data.questions);
+  // 🔥 Auto-detect backend URL
+  function computeBackendUrl() {
+    const hostname = window.location.hostname;
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return "http://localhost:5000";
     }
-  };
-
-  socket.onclose = () => {
-    statusText.textContent = "Disconnected. Reconnecting...";
-    statusText.parentElement.classList.remove("bg-green-100", "text-green-700");
-    statusText.parentElement.classList.add("bg-blue-100", "text-blue-700");
-    setTimeout(connectSocket, 2000);
-  };
-}
-
-connectSocket();
-
-// -------------------- RENDER --------------------
-function renderQuestions(questions) {
-  questionsContainer.innerHTML = "";
-  if (!questions || questions.length === 0) {
-    listEmpty.classList.remove("hidden");
-    return;
+    return "https://chic-reprieve-production.up.railway.app"; // your Railway backend
   }
-  listEmpty.classList.add("hidden");
 
-  questions.forEach((q) => {
-    const card = document.createElement("div");
-    card.className = "bg-white rounded-xl p-4 shadow";
+  const BASE_URL = computeBackendUrl();
+  const WS_URL = BASE_URL + "/ws";
 
-    const header = document.createElement("div");
-    header.className = "flex justify-between items-center mb-2";
-    const meta = document.createElement("div");
-    meta.innerHTML = `<p class="font-semibold">${q.author}</p>
-      <p class="text-xs text-gray-400">${new Date(q.timestamp).toLocaleString()}</p>`;
-    header.appendChild(meta);
+  function setStatus(connected) {
+    statusEl.className = `inline-flex items-center gap-2 px-4 py-2 rounded-full mt-5 ${
+      connected ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
+    }`;
+    statusText.textContent = connected ? "Connected" : "Connecting...";
+  }
 
-    // delete button only for admin
-    if (isAdmin) {
-      const delBtn = document.createElement("button");
-      delBtn.textContent = "Delete";
-      delBtn.className = "text-red-500 text-sm";
-      delBtn.onclick = () => deleteQuestion(q.id);
-      header.appendChild(delBtn);
+  async function fetchQuestions() {
+    try {
+      const res = await fetch(BASE_URL + "/api/questions");
+      const list = await res.json();
+      renderQuestions(list);
+    } catch (e) {
+      console.error(e);
     }
+  }
 
-    card.appendChild(header);
+  function renderQuestions(list) {
+    qList.innerHTML = "";
+    if (!list || list.length === 0) {
+      emptyEl.style.display = "";
+      return;
+    }
+    emptyEl.style.display = "none";
+    list.forEach((q) => qList.appendChild(questionCard(q)));
+  }
 
-    const content = document.createElement("p");
-    content.textContent = q.text;
-    content.className = "mb-2";
-    card.appendChild(content);
+  function questionCard(q) {
+    const card = document.createElement("div");
+    card.className = "card bg-white rounded-2xl p-5";
+    card.dataset.qid = q.id;
+    const date = new Date(q.createdAt);
 
-    // Replies
-    q.replies.forEach((r) => {
-      const reply = document.createElement("div");
-      reply.className = "bg-gray-100 p-2 rounded mb-1 flex justify-between";
-      reply.innerHTML = `<span>${r.text}</span>`;
-      if (isAdmin) {
-        const rDelBtn = document.createElement("button");
-        rDelBtn.textContent = "Delete";
-        rDelBtn.className = "text-red-500 text-xs";
-        rDelBtn.onclick = () => deleteReply(q.id, r.id);
-        reply.appendChild(rDelBtn);
-      }
-      card.appendChild(reply);
+    card.innerHTML = `
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <p class="text-lg font-semibold">${escapeHTML(q.text)}</p>
+          <p class="text-xs text-gray-400 mt-1">${date.toLocaleString()}</p>
+        </div>
+        <div class="flex gap-2 items-center" data-admin-actions></div>
+      </div>
+      <div class="mt-4 space-y-2" data-replies></div>
+      <div class="mt-4 flex gap-2">
+        <input type="text" placeholder="Write a reply..." class="flex-1 border border-gray-200 rounded-xl px-3 py-2 ring-focus">
+        <button class="bg-gray-800 hover:bg-black text-white px-4 py-2 rounded-xl">Reply</button>
+      </div>
+    `;
+
+    const repliesEl = card.querySelector("[data-replies]");
+    (q.replies || []).forEach((r) => appendReply(repliesEl, q.id, r));
+
+    const input = card.querySelector("input");
+    const btn = card.querySelector("button");
+
+    btn.addEventListener("click", () => sendReply(q.id, input));
+    input.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") sendReply(q.id, input);
     });
 
-    // Reply input
-    const replyBox = document.createElement("div");
-    replyBox.className = "flex gap-2 mt-2";
-    replyBox.innerHTML = `
-      <input type="text" placeholder="Write a reply..." class="flex-1 border border-gray-200 rounded-lg px-2 py-1">
-      <button class="bg-gray-800 text-white px-3 rounded-lg">Reply</button>`;
-    const replyInput = replyBox.querySelector("input");
-    const replyBtn = replyBox.querySelector("button");
-    replyBtn.onclick = () => sendReply(q.id, replyInput.value);
-    card.appendChild(replyBox);
+    // Show delete only if admin
+    if (adminToken) renderAdminDelete(card, q.id, repliesEl, q.replies || []);
 
-    questionsContainer.appendChild(card);
+    return card;
+  }
+
+  function appendReply(repliesEl, qid, r) {
+    const li = document.createElement("div");
+    li.className =
+      "bg-gray-50 rounded-xl px-3 py-2 text-sm flex justify-between items-center";
+    li.innerHTML = `<span>${escapeHTML(r.text)}</span>`;
+    if (adminToken) {
+      const delBtn = document.createElement("button");
+      delBtn.textContent = "Delete";
+      delBtn.className =
+        "text-xs text-red-600 hover:text-red-800 ml-2 underline";
+      delBtn.addEventListener("click", () => deleteReply(qid, r.id));
+      li.appendChild(delBtn);
+    }
+    repliesEl.appendChild(li);
+  }
+
+  function escapeHTML(str) {
+    return str.replace(/[&<>"']/g, (m) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;",
+    }[m]));
+  }
+
+  askBtn.addEventListener("click", sendQuestion);
+  qInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") sendQuestion();
   });
-}
 
-// -------------------- API --------------------
-function sendQuestion() {
-  const text = questionInput.value.trim();
-  if (!text) return;
-  fetch(`${backendUrl}/api/question`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text }),
-  });
-  questionInput.value = "";
-}
+  async function sendQuestion() {
+    const text = qInput.value.trim();
+    if (!text) return;
+    try {
+      const res = await fetch(BASE_URL + "/api/questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) throw new Error("Create failed");
+      qInput.value = "";
+    } catch {
+      alert("Failed to post. Check connection.");
+    }
+  }
 
-function sendReply(qid, text) {
-  if (!text.trim()) return;
-  fetch(`${backendUrl}/api/question/${qid}/reply`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text }),
-  });
-}
+  async function sendReply(qid, input) {
+    const text = input.value.trim();
+    if (!text) return;
+    try {
+      const res = await fetch(BASE_URL + `/api/questions/${qid}/replies`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) throw new Error("Reply failed");
+      input.value = "";
+    } catch {
+      alert("Failed to send reply. Check connection.");
+    }
+  }
 
-function deleteQuestion(qid) {
-  if (!isAdmin) return;
-  fetch(`${backendUrl}/api/question/${qid}`, { method: "DELETE" });
-}
+  // WebSocket
+  let sock;
+  function connectWS() {
+    setStatus(false);
+    sock = new SockJS(WS_URL);
+    sock.onopen = () => setStatus(true);
+    sock.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === "question_created") prependQuestion(msg.payload);
+        else if (msg.type === "reply_added")
+          addReply(msg.payload.questionId, msg.payload.reply);
+        else if (
+          ["question_deleted", "reply_deleted", "cleared"].includes(msg.type)
+        )
+          fetchQuestions();
+      } catch {}
+    };
+    sock.onclose = () => {
+      setStatus(false);
+      setTimeout(connectWS, 1500);
+    };
+  }
 
-function deleteReply(qid, rid) {
-  if (!isAdmin) return;
-  fetch(`${backendUrl}/api/question/${qid}/reply/${rid}`, { method: "DELETE" });
-}
+  function prependQuestion(q) {
+    emptyEl.style.display = "none";
+    qList.prepend(questionCard(q));
+  }
+  function addReply(qid, reply) {
+    const card = [...qList.children].find((el) => el.dataset.qid === qid);
+    if (!card) return fetchQuestions();
+    const repliesEl = card.querySelector("[data-replies]");
+    appendReply(repliesEl, qid, reply);
+  }
 
-function clearAll() {
-  if (!isAdmin) return;
-  fetch(`${backendUrl}/api/admin/clear`, { method: "DELETE" });
-}
+  // Admin functions
+  async function deleteQuestion(qid) {
+    if (!adminToken) return;
+    if (!confirm("Delete this question?")) return;
+    try {
+      const res = await fetch(BASE_URL + `/api/questions/${qid}`, {
+        method: "DELETE",
+        headers: { Authorization: "Bearer " + adminToken },
+      });
+      if (!res.ok) throw new Error();
+      fetchQuestions();
+    } catch {
+      alert("❌ Failed to delete question");
+    }
+  }
+  async function deleteReply(qid, rid) {
+    if (!adminToken) return;
+    if (!confirm("Delete this reply?")) return;
+    try {
+      const res = await fetch(BASE_URL + `/api/questions/${qid}/replies/${rid}`, {
+        method: "DELETE",
+        headers: { Authorization: "Bearer " + adminToken },
+      });
+      if (!res.ok) throw new Error();
+      fetchQuestions();
+    } catch {
+      alert("❌ Failed to delete reply");
+    }
+  }
 
-// -------------------- ADMIN --------------------
-function openAdminModal() {
-  adminModal.classList.remove("hidden");
-}
-function closeAdminModal() {
-  adminModal.classList.add("hidden");
-  adminPasswordInput.value = "";
-}
+  function renderAdminDelete(card, qid, repliesEl, repliesList) {
+    const adminActions = card.querySelector("[data-admin-actions]");
+    adminActions.innerHTML = "";
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "Delete";
+    delBtn.className =
+      "text-xs text-red-600 hover:text-red-800 underline";
+    delBtn.addEventListener("click", () => deleteQuestion(qid));
+    adminActions.appendChild(delBtn);
 
-function loginAdmin() {
-  const password = adminPasswordInput.value.trim();
-  fetch(`${backendUrl}/api/admin/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password }),
-  })
-    .then((res) => {
-      if (res.ok) {
-        isAdmin = true;
-        clearAllBtn.classList.remove("hidden");
-        closeAdminModal();
-        fetchAdminMembers();
-        renderQuestions([]); // re-render to show delete buttons
-      } else {
-        alert("Invalid password");
+    repliesList.forEach((r) => {
+      const li = [...repliesEl.children].find((l) =>
+        l.textContent.includes(r.text)
+      );
+      if (li && !li.querySelector("button")) {
+        const btn = document.createElement("button");
+        btn.textContent = "Delete";
+        btn.className =
+          "text-xs text-red-600 hover:text-red-800 ml-2 underline";
+        btn.addEventListener("click", () => deleteReply(qid, r.id));
+        li.appendChild(btn);
       }
-    })
-    .catch(() => alert("Error logging in"));
-}
+    });
+  }
 
-function fetchAdminMembers() {
-  fetch(`${backendUrl}/api/admin/members`)
-    .then((res) => res.json())
-    .then((data) => {
-      totalMembersCount.textContent = data.totalMembers;
-      adminMembers.classList.remove("hidden");
-    })
-    .catch(() => {});
-}
+  const adminModal = document.getElementById("adminModal");
+  const adminPasswordInput = document.getElementById("adminPasswordInput");
+  const adminCancelBtn = document.getElementById("adminCancelBtn");
+  const adminSubmitBtn = document.getElementById("adminSubmitBtn");
 
-// -------------------- EVENTS --------------------
-askBtn.onclick = sendQuestion;
-questionInput.addEventListener("keypress", (e) => {
-  if (e.key === "Enter") sendQuestion();
-});
+  function showAdminModal() {
+    adminPasswordInput.value = "";
+    adminModal.classList.remove("hidden");
+    adminPasswordInput.focus();
+  }
+  adminLoginBtn.addEventListener("click", showAdminModal);
+  adminCancelBtn.addEventListener("click", () =>
+    adminModal.classList.add("hidden")
+  );
 
-adminLoginBtn.onclick = openAdminModal;
-adminCancelBtn.onclick = closeAdminModal;
-adminSubmitBtn.onclick = loginAdmin;
-clearAllBtn.onclick = clearAll;
+  async function loginAdmin(password) {
+    if (!password) return alert("Please enter password");
+    try {
+      const res = await fetch(BASE_URL + "/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      adminToken = data.token;
+      localStorage.setItem("adminToken", adminToken);
+      alert("✅ Admin logged in");
+      clearAllBtn.classList.remove("hidden");
+      fetchQuestions();
+      adminModal.classList.add("hidden");
+
+      // fetch members after login
+      fetchAdminMembers();
+    } catch {
+      alert("❌ Admin login failed");
+    }
+  }
+
+  adminSubmitBtn.addEventListener("click", () =>
+    loginAdmin(adminPasswordInput.value.trim())
+  );
+
+  // Clear all
+  clearAllBtn.addEventListener("click", async () => {
+    if (!adminToken) return alert("Not logged in as admin");
+    if (!confirm("Clear ALL questions and replies?")) return;
+    try {
+      const res = await fetch(BASE_URL + "/api/admin/clear", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + adminToken },
+      });
+      if (!res.ok) throw new Error();
+      fetchQuestions();
+      alert("✅ All questions cleared");
+    } catch {
+      alert("❌ Failed to clear questions");
+    }
+  });
+
+  // Fetch total members
+  async function fetchAdminMembers() {
+    try {
+      const res = await fetch(BASE_URL + "/api/admin/members", {
+        headers: { Authorization: "Bearer " + adminToken },
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      // update members count in modal
+      document.getElementById("totalMembersCount").textContent = data.totalMembers;
+      document.getElementById("adminMembers").classList.remove("hidden");
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  // Init
+  if (adminToken) {
+    clearAllBtn.classList.remove("hidden");
+    fetchAdminMembers();
+  }
+  fetchQuestions();
+  connectWS();
+})();
