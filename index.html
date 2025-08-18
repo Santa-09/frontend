@@ -89,10 +89,10 @@
       <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
         <label class="flex items-center gap-2">
           <input id="aiAssistToggle" type="checkbox" class="w-4 h-4">
-          <span class="text-sm">Enable AI Assist (local)</span>
+          <span class="text-sm">Enable AI Assist</span>
         </label>
         <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
-          Adds a private, on-device AI-style reply to your questions/replies. Not visible to others.
+          Get AI-generated responses to your questions (requires backend AI setup).
         </p>
       </div>
     </div>
@@ -195,7 +195,12 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
-  <script src="./config.js"></script>
+  <script>
+    // Configuration
+    const BACKEND_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" 
+      ? "http://localhost:5000" 
+      : window.location.origin;
+  </script>
   <script src="./app.js"></script>
 </body>
 </html>
