@@ -1,6 +1,6 @@
 (function () {
   // === CONFIG - set your backend URL here or attach a global BACKEND_URL ===
-  const BACKEND_URL = window.BACKEND_URL || "https://backend.example.com";
+  const BACKEND_URL = window.BACKEND_URL || "https://chic-reprieve-production.up.railway.app";
 
   // DOM elements
   const statusEl = document.getElementById("status");
