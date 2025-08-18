@@ -7,11 +7,7 @@
 
   <!-- Tailwind config MUST be defined before the CDN script -->
   <script>
-    window.tailwind = {
-      config: {
-        darkMode: 'class'
-      }
-    }
+    window.tailwind = { config: { darkMode: 'class' } }
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
 
@@ -26,50 +22,40 @@
     body{ font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
     .card{ box-shadow: 0 10px 25px rgba(0,0,0,.06); }
     .ring-focus:focus{ outline: none; box-shadow: 0 0 0 4px rgba(43,92,255,.25); }
-    .slide-in {
-      transition: transform .25s ease, opacity .25s ease;
-      transform: translateX(100%);
-      opacity: 0;
-    }
-    .slide-in.open {
-      transform: translateX(0);
-      opacity: 1;
-    }
+    .slide-in { transition: transform .25s ease, opacity .25s ease; transform: translateX(100%); opacity: 0; }
+    .slide-in.open { transform: translateX(0); opacity: 1; }
+    .typing-dot { width:6px; height:6px; border-radius:9999px; background:currentColor; opacity:.7; animation: blink 1s infinite alternate; }
+    .typing-dot:nth-child(2){ animation-delay: .2s; }
+    .typing-dot:nth-child(3){ animation-delay: .4s; }
+    @keyframes blink { from{opacity:.2; transform: translateY(0)} to{opacity:1; transform: translateY(-1px)} }
   </style>
 </head>
 
-<!-- Set light/dark styles on body using Tailwind class strategy -->
 <body class="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-100 relative">
 
-  <!-- Admin Login Button -->
+  <!-- Admin Buttons -->
   <button id="adminLoginBtn"
     class="bg-gray-800 text-white px-4 py-2 rounded-xl hover:bg-black text-sm fixed top-5 right-5 z-50">
     Admin Login
   </button>
-
-  <!-- Admin Clear All Button -->
   <button id="clearAllBtn"
     class="bg-red-600 text-white px-4 py-2 rounded-xl hover:bg-red-700 text-sm fixed top-16 right-5 z-50 hidden">
     Clear All
   </button>
-
-  <!-- Admin Maintenance Toggle Panel Button -->
   <button id="maintenanceBtn"
     class="bg-yellow-600 text-white px-4 py-2 rounded-xl hover:bg-yellow-700 text-sm fixed top-28 right-5 z-50 hidden">
     Maintenance Controls
   </button>
 
-  <!-- ===== Settings Sidebar Toggle (User) ===== -->
+  <!-- Settings Sidebar Toggle -->
   <button id="openSettingsBtn"
     class="fixed top-5 left-5 z-50 px-3 py-2 rounded-xl text-sm bg-gray-200 hover:bg-gray-300 text-gray-800
            dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-100 shadow">
     ☰ Settings
   </button>
 
-  <!-- ===== Settings Sidebar (slides in from right) ===== -->
-  <div id="settingsOverlay"
-       class="fixed inset-0 bg-black/40 hidden z-50"></div>
-
+  <!-- Settings Sidebar -->
+  <div id="settingsOverlay" class="fixed inset-0 bg-black/40 hidden z-50"></div>
   <aside id="settingsSidebar"
          class="fixed right-0 top-0 h-full w-80 bg-white dark:bg-gray-800 shadow-2xl z-50 slide-in p-5">
     <div class="flex items-center justify-between">
@@ -89,9 +75,7 @@
                        px-4 py-2 rounded-xl hover:opacity-90">
           🌓 Toggle Dark / Light
         </button>
-        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
-          Saved on this device only.
-        </p>
+        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Saved on this device only.</p>
       </div>
 
       <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
@@ -99,6 +83,16 @@
         <p id="currentTempUser" class="mt-1 font-semibold"></p>
         <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
           This is automatically generated on first visit and used for your posts.
+        </p>
+      </div>
+
+      <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+        <label class="flex items-center gap-2">
+          <input id="aiAssistToggle" type="checkbox" class="w-4 h-4">
+          <span class="text-sm">Enable AI Assist (local)</span>
+        </label>
+        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">
+          Adds a private, on-device AI-style reply to your questions/replies. Not visible to others.
         </p>
       </div>
     </div>
@@ -156,9 +150,7 @@
   <div class="max-w-4xl mx-auto px-4 py-10">
     <header class="text-center mb-10">
       <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight">Anonymous Classroom Q&amp;A</h1>
-      <p class="text-gray-500 dark:text-gray-400 mt-2">
-        Ask questions freely without revealing your identity
-      </p>
+      <p class="text-gray-500 dark:text-gray-400 mt-2">Ask questions freely without revealing your identity</p>
       <p class="mt-1 text-xs text-gray-400" id="headerUserLine"></p>
 
       <!-- Connection status -->
@@ -188,6 +180,7 @@
           Ask
         </button>
       </div>
+      <div id="mainTyping" class="flex items-center gap-1 text-xs text-gray-500 mt-2 h-4"></div>
       <p class="text-gray-400 dark:text-gray-500 text-sm mt-2">All questions and replies are anonymous</p>
     </section>
 
