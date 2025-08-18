@@ -22,7 +22,7 @@
   const maintenanceLogo = document.getElementById("maintenanceLogo");
   const maintenanceTimerNote = document.getElementById("maintenanceTimerNote");
 
-  // === Settings sidebar & theme controls ===
+  // Settings + theme
   const openSettingsBtn = document.getElementById("openSettingsBtn");
   const closeSettingsBtn = document.getElementById("closeSettingsBtn");
   const settingsSidebar = document.getElementById("settingsSidebar");
@@ -30,6 +30,8 @@
   const themeToggleBtn = document.getElementById("themeToggleBtn");
   const currentTempUserEl = document.getElementById("currentTempUser");
   const headerUserLine = document.getElementById("headerUserLine");
+  const aiAssistToggle = document.getElementById("aiAssistToggle");
+  const mainTyping = document.getElementById("mainTyping");
 
   // admin state (reset every refresh)
   let adminToken = null;
@@ -48,7 +50,7 @@
     const animals = ["sparrow","otter","koala","lynx","panda","falcon","tiger","orca","yak","gecko"];
     const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
     const animal = animals[Math.floor(Math.random() * animals.length)];
-    const num = Math.floor(Math.random() * 900 + 100); // 3 digits
+    const num = Math.floor(Math.random() * 900 + 100);
     return `${adj}_${animal}_${num}`;
   }
   let tempUser = localStorage.getItem("tempUser");
@@ -72,7 +74,6 @@
   }
   const savedTheme = localStorage.getItem("theme") || "light";
   applyTheme(savedTheme);
-
   if (themeToggleBtn) {
     themeToggleBtn.addEventListener("click", () => {
       const current = localStorage.getItem("theme") || "light";
@@ -80,17 +81,20 @@
     });
   }
 
-  function openSidebar() {
-    settingsOverlay.classList.remove("hidden");
-    settingsSidebar.classList.add("open");
-  }
-  function closeSidebar() {
-    settingsOverlay.classList.add("hidden");
-    settingsSidebar.classList.remove("open");
-  }
+  function openSidebar() { settingsOverlay.classList.remove("hidden"); settingsSidebar.classList.add("open"); }
+  function closeSidebar() { settingsOverlay.classList.add("hidden"); settingsSidebar.classList.remove("open"); }
   if (openSettingsBtn) openSettingsBtn.addEventListener("click", openSidebar);
   if (closeSettingsBtn) closeSettingsBtn.addEventListener("click", closeSidebar);
   if (settingsOverlay) settingsOverlay.addEventListener("click", closeSidebar);
+
+  // ===== AI Assist (local-only) =====
+  const AI_ASSIST_KEY = "aiAssistEnabled";
+  function getAiEnabled() { return localStorage.getItem(AI_ASSIST_KEY) === "1"; }
+  function setAiEnabled(v) { localStorage.setItem(AI_ASSIST_KEY, v ? "1" : "0"); }
+  if (aiAssistToggle) {
+    aiAssistToggle.checked = getAiEnabled();
+    aiAssistToggle.addEventListener("change", () => setAiEnabled(aiAssistToggle.checked));
+  }
 
   // Auto-detect backend URL
   function computeBackendUrl() {
@@ -100,7 +104,6 @@
     }
     return (window.BACKEND_URL || "").replace(/\/+$/, "");
   }
-
   const BASE_URL = computeBackendUrl();
   const WS_URL = BASE_URL + "/ws";
 
@@ -115,11 +118,8 @@
 
   function setMaintenanceUI(state) {
     maintenance = { ...maintenance, ...state };
-
     const on = !!maintenance.status;
     maintenanceBanner.classList.toggle("hidden", !on);
-
-    // text & logo
     maintenanceText.textContent = maintenance.message || "🚧 Server under maintenance. Chat is temporarily disabled.";
     if (maintenance.logoUrl) {
       maintenanceLogo.src = maintenance.logoUrl;
@@ -128,8 +128,6 @@
       maintenanceLogo.classList.add("hidden");
       maintenanceLogo.removeAttribute("src");
     }
-
-    // show "until" if present
     if (maintenance.until) {
       const d = new Date(maintenance.until);
       if (!isNaN(d)) {
@@ -143,7 +141,7 @@
       maintUntilText.classList.add("hidden");
     }
 
-    // disable inputs everywhere
+    // disable inputs
     qInput.disabled = on;
     askBtn.disabled = on;
     qInput.classList.toggle("opacity-60", on);
@@ -179,16 +177,28 @@
     }
     emptyEl.style.display = "none";
     list.forEach((q) => qList.appendChild(questionCard(q)));
-    // Re-apply maintenance state after rendering
     setMaintenanceUI(maintenance);
   }
 
   function userBadge(name) {
     const safe = escapeHTML(name || "anonymous");
     return `<span class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700
-                          dark:bg-gray-700 dark:text-gray-100">
-              👤 ${safe}
-            </span>`;
+                        dark:bg-gray-700 dark:text-gray-100">👤 ${safe}</span>`;
+  }
+
+  // Track per-thread typing timers { qid?: timeoutId }
+  const typingTimers = new Map(); // key: qid or 'main'
+
+  function showTyping(targetEl, who) {
+    if (!targetEl) return;
+    targetEl.innerHTML = `<span class="inline-flex items-center gap-1 text-gray-500">
+        <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
+        <span class="ml-1 text-xs">${who} is typing…</span>
+      </span>`;
+  }
+  function hideTyping(targetEl) {
+    if (!targetEl) return;
+    targetEl.textContent = "";
   }
 
   function questionCard(q) {
@@ -208,6 +218,9 @@
         </div>
         <div class="flex gap-2 items-center" data-admin-actions></div>
       </div>
+
+      <div class="mt-3 h-4 text-xs text-gray-500" data-thread-typing></div>
+
       <div class="mt-4 space-y-2" data-replies></div>
       <div class="mt-4 flex gap-2">
         <input type="text" placeholder="Write a reply..."
@@ -222,14 +235,14 @@
 
     const input = card.querySelector("input");
     const btn = card.querySelector("button");
+    const typingEl = card.querySelector("[data-thread-typing]");
 
-    btn.addEventListener("click", () => sendReply(q.id, input));
-    input.addEventListener("keypress", (e) => {
-      if (e.key === "Enter") sendReply(q.id, input);
-    });
+    btn.addEventListener("click", () => sendReply(q.id, input, typingEl));
+    input.addEventListener("keypress", (e) => { if (e.key === "Enter") sendReply(q.id, input, typingEl); });
+    input.addEventListener("input", () => emitTyping(q.id));
 
     // Show delete only if admin
-    if (adminToken) renderAdminDelete(card, q.id, repliesEl, q.replies || []);
+    if (adminToken) renderAdminDelete(card, q.id);
 
     return card;
   }
@@ -238,14 +251,15 @@
     const li = document.createElement("div");
     li.className = "bg-gray-50 dark:bg-gray-900 rounded-xl px-3 py-2 text-sm flex justify-between items-center";
     const date = new Date(r.createdAt || Date.now());
+    const who = r.user ? userBadge(r.user) : "";
     li.innerHTML = `
       <span>
-        ${escapeHTML(r.text)}
-        <span class="ml-2">${userBadge(r.user)}</span>
+        ${escapeHTML(r.text)} ${who ? `<span class="ml-2">${who}</span>` : ""}
         <span class="ml-2 text-xs text-gray-400">${date.toLocaleString()}</span>
       </span>
     `;
-    if (adminToken) {
+    // admin delete for replies handled by refetch after deletion
+    if (adminToken && r.id) {
       const delBtn = document.createElement("button");
       delBtn.textContent = "Delete";
       delBtn.className = "text-xs text-red-600 hover:text-red-800 ml-2 underline";
@@ -256,13 +270,12 @@
   }
 
   function escapeHTML(str) {
-    return String(str ?? "").replace(/[&<>"']/g, (m) => ({
-      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
-    }[m]));
+    return String(str ?? "").replace(/[&<>"']/g, (m) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
   }
 
-  askBtn.addEventListener("click", sendQuestion);
+  askBtn.addEventListener("click", () => sendQuestion());
   qInput.addEventListener("keypress", (e) => { if (e.key === "Enter") sendQuestion(); });
+  qInput.addEventListener("input", () => emitTyping(null)); // main composer
 
   async function sendQuestion() {
     const text = qInput.value.trim();
@@ -289,12 +302,26 @@
         return;
       }
       qInput.value = "";
+
+      // Local AI Assist (not broadcast)
+      if (getAiEnabled()) {
+        setTimeout(() => {
+          const pseudo = {
+            id: `ai-q-${Date.now()}`,
+            text: `🤖 AI Assist: "${text}" — Thanks for asking! (local preview)`,
+            createdAt: new Date().toISOString(),
+            user: "AI Assistant (local)"
+          };
+          // Prepend a local-only card with a single AI reply
+          prependQuestionLocal(pseudo, true);
+        }, 450);
+      }
     } catch {
       alert("Failed to post. Check connection.");
     }
   }
 
-  async function sendReply(qid, input) {
+  async function sendReply(qid, input, typingEl) {
     const text = input.value.trim();
     if (!text) return;
     try {
@@ -319,17 +346,44 @@
         return;
       }
       input.value = "";
+
+      // Local AI Assist reply (not broadcast)
+      if (getAiEnabled()) {
+        setTimeout(() => {
+          const card = [...qList.children].find((el) => el.dataset.qid === qid);
+          if (!card) return;
+          const repliesEl = card.querySelector("[data-replies]");
+          const reply = {
+            id: `ai-r-${Date.now()}`,
+            text: `🤖 AI Assist: "${text}" — here's a local-only hint.`,
+            createdAt: new Date().toISOString(),
+            user: "AI Assistant (local)"
+          };
+          appendReply(repliesEl, qid, reply);
+        }, 400);
+      }
+
+      // Clear typing for this thread quickly
+      if (typingEl) hideTyping(typingEl);
     } catch {
       alert("Failed to send reply. Check connection.");
     }
   }
 
-  // WebSocket
+  // WebSocket (SockJS)
   let sock;
   function connectWS() {
     setStatus(false);
     sock = new SockJS(WS_URL);
-    sock.onopen = () => setStatus(true);
+
+    sock.onopen = () => {
+      setStatus(true);
+      // register username for typing announcements
+      try {
+        sock.send(JSON.stringify({ type: "set-username", username: tempUser }));
+      } catch {}
+    };
+
     sock.onmessage = (e) => {
       try {
         const msg = JSON.parse(e.data);
@@ -339,12 +393,62 @@
         else if (msg.type === "delete-reply") removeReply(msg.payload.questionId, msg.payload.replyId);
         else if (msg.type === "clear-all") fetchQuestions();
         else if (msg.type === "maintenance") setMaintenanceUI(msg.payload);
+        else if (msg.type === "typing") handleTypingEvent(msg.payload);
       } catch {}
     };
+
     sock.onclose = () => {
       setStatus(false);
       setTimeout(connectWS, 1500);
     };
+  }
+
+  function typingTimeoutKey(qid) { return qid || "main"; }
+
+  function handleTypingEvent(payload) {
+    const { questionId, username } = payload || {};
+    if (!username || username === tempUser) return; // don't show my own typing
+
+    const key = typingTimeoutKey(questionId);
+    const prevTimer = typingTimers.get(key);
+    if (prevTimer) clearTimeout(prevTimer);
+
+    if (questionId) {
+      const card = [...qList.children].find((el) => el.dataset.qid === questionId);
+      if (!card) return;
+      const typingEl = card.querySelector("[data-thread-typing]");
+      showTyping(typingEl, username);
+      const t = setTimeout(() => hideTyping(typingEl), 1200);
+      typingTimers.set(key, t);
+    } else {
+      showTyping(mainTyping, username);
+      const t = setTimeout(() => hideTyping(mainTyping), 1200);
+      typingTimers.set(key, t);
+    }
+  }
+
+  function emitTyping(qid) {
+    try {
+      sock?.send(JSON.stringify({ type: "typing", questionId: qid || null, username: tempUser }));
+    } catch {}
+  }
+
+  function prependQuestionLocal(q, aiOnly = false) {
+    // like server question, but if aiOnly true, also drop a first AI reply locally
+    emptyEl.style.display = "none";
+    const card = questionCard(q);
+    qList.prepend(card);
+    if (aiOnly) {
+      const repliesEl = card.querySelector("[data-replies]");
+      const reply = {
+        id: `ai-r-${Date.now()}`,
+        text: "🤖 AI Assist: I'm here to help — this card is visible only to you.",
+        createdAt: new Date().toISOString(),
+        user: "AI Assistant (local)"
+      };
+      appendReply(repliesEl, q.id, reply);
+    }
+    setMaintenanceUI(maintenance);
   }
 
   function prependQuestion(q) {
@@ -364,9 +468,7 @@
     if (card) card.remove();
     if (qList.children.length === 0) emptyEl.style.display = "";
   }
-  function removeReply(qid, rid) {
-    fetchQuestions();
-  }
+  function removeReply(qid, rid) { fetchQuestions(); }
 
   // Admin functions
   async function deleteQuestion(qid) {
@@ -432,13 +534,12 @@
       });
       if (!res.ok) throw new Error();
       const data = await res.json();
-      adminToken = data.token; // memory only
+      adminToken = data.token;
       alert("✅ Admin logged in");
       clearAllBtn.classList.remove("hidden");
       maintenanceBtn.classList.remove("hidden");
       adminModal.classList.add("hidden");
 
-      // fetch members and maintenance status
       fetchAdminMembers();
       fetchMaintenanceStatus();
       // After admin login, show delete buttons on existing cards
@@ -452,9 +553,7 @@
   }
 
   adminSubmitBtn.addEventListener("click", () => loginAdmin(adminPasswordInput.value.trim()));
-  adminPasswordInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") loginAdmin(adminPasswordInput.value.trim());
-  });
+  adminPasswordInput.addEventListener("keypress", (e) => { if (e.key === "Enter") loginAdmin(adminPasswordInput.value.trim()); });
 
   // Clear all (DELETE /api/questions)
   clearAllBtn.addEventListener("click", async () => {
@@ -540,10 +639,8 @@
       // pre-fill controls with current values
       maintMessage.value = data.message || "";
       maintLogo.value = data.logoUrl || "";
-      maintDuration.value = ""; // leave blank by default
-    } catch {
-      // ignore if not admin or error
-    }
+      maintDuration.value = "";
+    } catch {}
   }
 
   // Members list + count (admin only)
@@ -556,12 +653,11 @@
       const data = await res.json();
 
       document.getElementById("totalMembersCount").textContent = data.totalMembers;
-
       const membersList = document.getElementById("membersList");
       membersList.innerHTML = "";
       data.members.forEach(m => {
         const li = document.createElement("li");
-        li.textContent = m.id || "Anonymous";
+        li.textContent = m.username || m.id || "Anonymous";
         membersList.appendChild(li);
       });
 
