@@ -1,4 +1,5 @@
 (function () {
+  // ------- DOM -------
   const statusEl = document.getElementById("status");
   const statusText = document.getElementById("statusText");
   const qInput = document.getElementById("questionInput");
@@ -6,26 +7,28 @@
   const qList = document.getElementById("questions");
   const emptyEl = document.getElementById("listEmpty");
 
+  // Admin controls
   const adminLoginBtn = document.getElementById("adminLoginBtn");
   const clearAllBtn = document.getElementById("clearAllBtn");
   const maintenanceBtn = document.getElementById("maintenanceBtn");
   const maintenancePanel = document.getElementById("maintenancePanel");
-  const maintDuration = document.getElementById("maintDuration");
+  const maintDuration = document.getElementById("maintDuration"); // datetime-local
   const maintMessage = document.getElementById("maintMessage");
   const maintLogo = document.getElementById("maintLogo");
   const applyMaintBtn = document.getElementById("applyMaintBtn");
   const disableMaintBtn = document.getElementById("disableMaintBtn");
   const maintUntilText = document.getElementById("maintUntilText");
 
+  // Maintenance banner
   const maintenanceBanner = document.getElementById("maintenanceBanner");
   const maintenanceText = document.getElementById("maintenanceText");
   const maintenanceLogoImg = document.getElementById("maintenanceLogo");
   const maintenanceTimerNote = document.getElementById("maintenanceTimerNote");
 
-  // Optional admin members panel (if present)
+  // Optional admin members panel (if present in your HTML)
   const adminMembersList = document.getElementById("adminMembersList");
 
-  // === Settings & theme ===
+  // Settings / Theme / AI mode
   const openSettingsBtn = document.getElementById("openSettingsBtn");
   const closeSettingsBtn = document.getElementById("closeSettingsBtn");
   const settingsSidebar = document.getElementById("settingsSidebar");
@@ -35,10 +38,9 @@
   const headerUserLine = document.getElementById("headerUserLine");
   const aiToggle = document.getElementById("aiToggle");
 
-  // admin state (reset every refresh)
+  // ------- State -------
   let adminToken = null;
 
-  // maintenance local state
   let maintenance = {
     status: false,
     message: "Server under maintenance. Please try again later.",
@@ -46,13 +48,30 @@
     until: null
   };
 
-  // ===== Temporary username (per device) =====
+  // ------- Utils -------
+  function escapeHTML(str) {
+    return String(str ?? "").replace(/[&<>"']/g, (m) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;"
+    }[m]));
+  }
+
+  function userBadge(name) {
+    const safe = escapeHTML(name || "anonymous");
+    return `<span class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700
+                          dark:bg-gray-700 dark:text-gray-100">👤 ${safe}</span>`;
+  }
+
+  // ------- Temp username -------
   function generateUsername() {
     const adjectives = ["bright","swift","calm","brave","mellow","clever","quiet","bold","eager","neat"];
     const animals = ["sparrow","otter","koala","lynx","panda","falcon","tiger","orca","yak","gecko"];
     const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
     const animal = animals[Math.floor(Math.random() * animals.length)];
-    const num = Math.floor(Math.random() * 900 + 100); // 3 digits
+    const num = Math.floor(Math.random() * 900 + 100);
     return `${adj}_${animal}_${num}`;
   }
   let tempUser = localStorage.getItem("tempUser");
@@ -63,7 +82,7 @@
   if (currentTempUserEl) currentTempUserEl.textContent = tempUser;
   if (headerUserLine) headerUserLine.textContent = `You are posting as: ${tempUser}`;
 
-  // ===== Theme (per device) =====
+  // ------- Theme -------
   function applyTheme(theme) {
     const root = document.documentElement;
     if (theme === "dark") {
@@ -83,10 +102,9 @@
     });
   }
 
-  // ===== AI Mode toggle =====
-  const savedAIMode = localStorage.getItem("aiMode") === "true";
+  // ------- AI Mode -------
   if (aiToggle) {
-    aiToggle.checked = savedAIMode;
+    aiToggle.checked = localStorage.getItem("aiMode") === "true";
     aiToggle.addEventListener("change", () => {
       localStorage.setItem("aiMode", aiToggle.checked ? "true" : "false");
     });
@@ -95,6 +113,7 @@
     return (aiToggle && aiToggle.checked) || false;
   }
 
+  // ------- Settings sidebar -------
   function openSidebar() {
     if (!settingsOverlay || !settingsSidebar) return;
     settingsOverlay.classList.remove("hidden");
@@ -109,20 +128,22 @@
   if (closeSettingsBtn) closeSettingsBtn.addEventListener("click", closeSidebar);
   if (settingsOverlay) settingsOverlay.addEventListener("click", closeSidebar);
 
-  // Auto-detect backend URL
+  // ------- Backend & WS -------
   function computeBackendUrl() {
     const hostname = window.location.hostname;
     if (hostname === "localhost" || hostname === "127.0.0.1") {
-      return "https://chic-reprieve-production.up.railway.app";
+      return "http://localhost:5000";
     }
-    return (window.BACKEND_URL || "").replace(/\/+$/, "");
+    // allow override with window.BACKEND_URL; otherwise default to your Railway app
+    return (window.BACKEND_URL || "https://chic-reprieve-production.up.railway.app").replace(/\/+$/, "");
   }
-
   const BASE_URL = computeBackendUrl();
-// force correct WebSocket protocol
-const WS_URL = BASE_URL.replace(/^http/, "ws") + "/ws";
 
+  // SockJS should receive an http(s) URL. We also prepare a native ws URL as fallback.
+  const WS_HTTP = BASE_URL + "/ws";
+  const WS_NATIVE = WS_HTTP.replace(/^http/i, (m) => (m.toLowerCase() === "https" ? "wss" : "ws"));
 
+  // ------- Connection status -------
   function setStatus(connected) {
     if (!statusEl || !statusText) return;
     statusEl.className = `inline-flex items-center gap-2 px-4 py-2 rounded-full mt-5 ${
@@ -133,12 +154,16 @@ const WS_URL = BASE_URL.replace(/^http/, "ws") + "/ws";
     statusText.textContent = connected ? "Connected" : "Connecting...";
   }
 
+  // ------- Maintenance UI -------
   function setMaintenanceUI(state) {
     maintenance = { ...maintenance, ...state };
+
     const on = !!maintenance.status;
     if (maintenanceBanner) maintenanceBanner.classList.toggle("hidden", !on);
 
-    if (maintenanceText) maintenanceText.textContent = maintenance.message || "🚧 Server under maintenance. Chat is temporarily disabled.";
+    if (maintenanceText) {
+      maintenanceText.textContent = maintenance.message || "🚧 Server under maintenance. Chat is temporarily disabled.";
+    }
     if (maintenanceLogoImg) {
       if (maintenance.logoUrl) {
         maintenanceLogoImg.src = maintenance.logoUrl;
@@ -188,6 +213,7 @@ const WS_URL = BASE_URL.replace(/^http/, "ws") + "/ws";
     });
   }
 
+  // ------- Fetch & render -------
   async function fetchQuestions() {
     try {
       const res = await fetch(BASE_URL + "/api/questions");
@@ -209,14 +235,6 @@ const WS_URL = BASE_URL.replace(/^http/, "ws") + "/ws";
     if (emptyEl) emptyEl.style.display = "none";
     list.forEach((q) => qList.appendChild(questionCard(q)));
     setMaintenanceUI(maintenance);
-  }
-
-  function userBadge(name) {
-    const safe = escapeHTML(name || "anonymous");
-    return `<span class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700
-                          dark:bg-gray-700 dark:text-gray-100">
-              👤 ${safe}
-            </span>`;
   }
 
   function questionCard(q) {
@@ -250,7 +268,6 @@ const WS_URL = BASE_URL.replace(/^http/, "ws") + "/ws";
 
     const input = card.querySelector("input");
     const btn = card.querySelector("button");
-
     btn.addEventListener("click", () => sendReply(q.id, input));
     input.addEventListener("keypress", (e) => { if (e.key === "Enter") sendReply(q.id, input); });
 
@@ -280,10 +297,7 @@ const WS_URL = BASE_URL.replace(/^http/, "ws") + "/ws";
     repliesEl.appendChild(li);
   }
 
-  function escapeHTML(str) {
-    return String(str ?? "").replace(/[&<>"']/g, (m) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
-  }
-
+  // ------- Send Q & reply -------
   if (askBtn) askBtn.addEventListener("click", sendQuestion);
   if (qInput) qInput.addEventListener("keypress", (e) => { if (e.key === "Enter") sendQuestion(); });
 
@@ -351,21 +365,41 @@ const WS_URL = BASE_URL.replace(/^http/, "ws") + "/ws";
     }
   }
 
-  // WebSocket
+  // ------- WebSocket / SockJS -------
   let sock;
+  let reconnectTimer = null;
+  function scheduleReconnect() {
+    if (reconnectTimer) return;
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      connectWS();
+    }, 1500);
+  }
+
   function connectWS() {
     setStatus(false);
     try {
-      sock = new SockJS(WS_URL);
+      if (window.SockJS) {
+        // SockJS expects http(s) URL
+        sock = new SockJS(WS_HTTP);
+      } else {
+        // Fallback to native WebSocket
+        sock = new WebSocket(WS_NATIVE);
+      }
     } catch (e) {
-      console.error("SockJS init error:", e);
+      console.error("SockJS/WebSocket init error:", e);
+      scheduleReconnect();
       return;
     }
+
     sock.onopen = () => {
       setStatus(true);
-      // send username so the backend can display members properly
-      try { sock.send(JSON.stringify({ type: "set-username", username: tempUser })); } catch {}
+      try {
+        // Let backend know our username for presence/member list
+        sock.send(JSON.stringify({ type: "set-username", username: tempUser }));
+      } catch {}
     };
+
     sock.onmessage = (e) => {
       try {
         const msg = JSON.parse(e.data);
@@ -375,14 +409,17 @@ const WS_URL = BASE_URL.replace(/^http/, "ws") + "/ws";
         else if (msg.type === "delete-reply") removeReply(msg.payload.questionId, msg.payload.replyId);
         else if (msg.type === "clear-all") fetchQuestions();
         else if (msg.type === "maintenance") setMaintenanceUI(msg.payload);
-      } catch (err) {
+      } catch {
         // ignore parse errors
       }
     };
+
     sock.onclose = () => {
       setStatus(false);
-      // try reconnect after a bit
-      setTimeout(connectWS, 1500);
+      scheduleReconnect();
+    };
+    sock.onerror = () => {
+      try { sock.close(); } catch {}
     };
   }
 
@@ -406,12 +443,12 @@ const WS_URL = BASE_URL.replace(/^http/, "ws") + "/ws";
     if (card) card.remove();
     if (qList.children.length === 0 && emptyEl) emptyEl.style.display = "";
   }
-  function removeReply(qid, rid) {
+  function removeReply(_qid, _rid) {
     // simplest: re-fetch to ensure consistent state
     fetchQuestions();
   }
 
-  // Admin functions
+  // ------- Admin actions -------
   async function deleteQuestion(qid) {
     if (!adminToken) return;
     if (!confirm("Delete this question?")) return;
@@ -454,7 +491,7 @@ const WS_URL = BASE_URL.replace(/^http/, "ws") + "/ws";
     adminActions.appendChild(delBtn);
   }
 
-  // Admin modal
+  // ------- Admin modal/login -------
   const adminModal = document.getElementById("adminModal");
   const adminPasswordInput = document.getElementById("adminPasswordInput");
   const adminCancelBtn = document.getElementById("adminCancelBtn");
@@ -520,7 +557,7 @@ const WS_URL = BASE_URL.replace(/^http/, "ws") + "/ws";
     }
   });
 
-  // Maintenance panel show/hide & actions
+  // ------- Maintenance controls -------
   function showMaintenancePanel() {
     if (!maintenancePanel) return;
     maintenancePanel.classList.remove("hidden");
@@ -534,7 +571,6 @@ const WS_URL = BASE_URL.replace(/^http/, "ws") + "/ws";
   }
   if (maintenanceBtn) maintenanceBtn.addEventListener("click", showMaintenancePanel);
 
-  // fetch current maintenance status (admin)
   async function fetchMaintenanceStatus() {
     if (!adminToken) return;
     try {
@@ -601,7 +637,7 @@ const WS_URL = BASE_URL.replace(/^http/, "ws") + "/ws";
   if (applyMaintBtn) applyMaintBtn.addEventListener("click", applyMaintenance);
   if (disableMaintBtn) disableMaintBtn.addEventListener("click", disableMaintenance);
 
-  // admin members fetch + render (optional)
+  // ------- Admin members (optional) -------
   async function fetchAdminMembers() {
     if (!adminToken || !adminMembersList) return;
     try {
@@ -627,11 +663,14 @@ const WS_URL = BASE_URL.replace(/^http/, "ws") + "/ws";
     });
   }
 
-  // initial load
+  // ------- Init -------
+  if (clearAllBtn) clearAllBtn.classList.add("hidden");
+  if (maintenanceBtn) maintenanceBtn.classList.add("hidden");
+  if (maintenancePanel) maintenancePanel.classList.add("hidden");
   fetchQuestions();
   connectWS();
 
-  // expose some helpers to window for debugging (optional)
+  // ------- Debug helpers -------
   window.DEBUG_APP = {
     fetchQuestions,
     fetchMaintenanceStatus,
