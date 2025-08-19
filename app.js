@@ -119,7 +119,9 @@
   }
 
   const BASE_URL = computeBackendUrl();
+// force correct WebSocket protocol
 const WS_URL = BASE_URL.replace(/^http/, "ws") + "/ws";
+
 
   function setStatus(connected) {
     if (!statusEl || !statusText) return;
