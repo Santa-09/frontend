@@ -119,7 +119,7 @@
   }
 
   const BASE_URL = computeBackendUrl();
-  const WS_URL = BASE_URL + "/ws";
+const WS_URL = BASE_URL.replace(/^http/, "ws") + "/ws";
 
   function setStatus(connected) {
     if (!statusEl || !statusText) return;
