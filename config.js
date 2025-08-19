@@ -6,7 +6,7 @@
   if (hostname === "localhost" || hostname === "127.0.0.1") {
     backendUrl = "http://localhost:5000"; // local dev
   } else {
-    backendUrl = "https://<your-railway-app>.up.railway.app"; // replace with your Railway URL
+    backendUrl = "https://chic-reprieve-production.up.railway.app"; // ✅ your Railway backend URL
   }
 
   window.BACKEND_URL = backendUrl;
