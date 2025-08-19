@@ -115,7 +115,7 @@
     if (hostname === "localhost" || hostname === "127.0.0.1") {
       return "http://localhost:5000";
     }
-    return (window.BACKEND_URL || "").replace(/\/+$/, "");
+    return (window.BACKEND_URL || "https://chic-reprieve-production.up.railway.app").replace(/\/+$/, "");
   }
 
   const BASE_URL = computeBackendUrl();
