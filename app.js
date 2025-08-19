@@ -1,8 +1,4 @@
 (function () {
-  // === CONFIG - set your backend URL here or attach a global BACKEND_URL ===
-  const BACKEND_URL = window.BACKEND_URL || "https://chic-reprieve-production.up.railway.app";
-
-  // DOM elements
   const statusEl = document.getElementById("status");
   const statusText = document.getElementById("statusText");
   const qInput = document.getElementById("questionInput");
@@ -10,7 +6,6 @@
   const qList = document.getElementById("questions");
   const emptyEl = document.getElementById("listEmpty");
 
-  // Admin elements
   const adminLoginBtn = document.getElementById("adminLoginBtn");
   const clearAllBtn = document.getElementById("clearAllBtn");
   const maintenanceBtn = document.getElementById("maintenanceBtn");
@@ -22,13 +17,15 @@
   const disableMaintBtn = document.getElementById("disableMaintBtn");
   const maintUntilText = document.getElementById("maintUntilText");
 
-  // Maintenance UI
   const maintenanceBanner = document.getElementById("maintenanceBanner");
   const maintenanceText = document.getElementById("maintenanceText");
-  const maintenanceLogo = document.getElementById("maintenanceLogo");
+  const maintenanceLogoImg = document.getElementById("maintenanceLogo");
   const maintenanceTimerNote = document.getElementById("maintenanceTimerNote");
 
-  // Settings
+  // Optional admin members panel (if present)
+  const adminMembersList = document.getElementById("adminMembersList");
+
+  // === Settings & theme ===
   const openSettingsBtn = document.getElementById("openSettingsBtn");
   const closeSettingsBtn = document.getElementById("closeSettingsBtn");
   const settingsSidebar = document.getElementById("settingsSidebar");
@@ -36,11 +33,12 @@
   const themeToggleBtn = document.getElementById("themeToggleBtn");
   const currentTempUserEl = document.getElementById("currentTempUser");
   const headerUserLine = document.getElementById("headerUserLine");
-  const aiAssistToggle = document.getElementById("aiAssistToggle");
-  const mainTyping = document.getElementById("mainTyping");
+  const aiToggle = document.getElementById("aiToggle");
 
-  // State
+  // admin state (reset every refresh)
   let adminToken = null;
+
+  // maintenance local state
   let maintenance = {
     status: false,
     message: "Server under maintenance. Please try again later.",
@@ -48,13 +46,13 @@
     until: null
   };
 
-  // ===== Temporary username =====
+  // ===== Temporary username (per device) =====
   function generateUsername() {
     const adjectives = ["bright","swift","calm","brave","mellow","clever","quiet","bold","eager","neat"];
     const animals = ["sparrow","otter","koala","lynx","panda","falcon","tiger","orca","yak","gecko"];
     const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
     const animal = animals[Math.floor(Math.random() * animals.length)];
-    const num = Math.floor(Math.random() * 900 + 100);
+    const num = Math.floor(Math.random() * 900 + 100); // 3 digits
     return `${adj}_${animal}_${num}`;
   }
   let tempUser = localStorage.getItem("tempUser");
@@ -65,7 +63,7 @@
   if (currentTempUserEl) currentTempUserEl.textContent = tempUser;
   if (headerUserLine) headerUserLine.textContent = `You are posting as: ${tempUser}`;
 
-  // ===== Theme =====
+  // ===== Theme (per device) =====
   function applyTheme(theme) {
     const root = document.documentElement;
     if (theme === "dark") {
@@ -78,26 +76,51 @@
   }
   const savedTheme = localStorage.getItem("theme") || "light";
   applyTheme(savedTheme);
-  if (themeToggleBtn) themeToggleBtn.addEventListener("click", () => {
-    const current = localStorage.getItem("theme") || "light";
-    applyTheme(current === "light" ? "dark" : "light");
-  });
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener("click", () => {
+      const current = localStorage.getItem("theme") || "light";
+      applyTheme(current === "light" ? "dark" : "light");
+    });
+  }
 
-  // ===== Settings Sidebar =====
-  function openSidebar() { if (settingsOverlay) settingsOverlay.classList.remove("hidden"); if (settingsSidebar) settingsSidebar.classList.add("open"); }
-  function closeSidebar() { if (settingsOverlay) settingsOverlay.classList.add("hidden"); if (settingsSidebar) settingsSidebar.classList.remove("open"); }
+  // ===== AI Mode toggle =====
+  const savedAIMode = localStorage.getItem("aiMode") === "true";
+  if (aiToggle) {
+    aiToggle.checked = savedAIMode;
+    aiToggle.addEventListener("change", () => {
+      localStorage.setItem("aiMode", aiToggle.checked ? "true" : "false");
+    });
+  }
+  function isAIModeOn() {
+    return (aiToggle && aiToggle.checked) || false;
+  }
+
+  function openSidebar() {
+    if (!settingsOverlay || !settingsSidebar) return;
+    settingsOverlay.classList.remove("hidden");
+    settingsSidebar.classList.add("open");
+  }
+  function closeSidebar() {
+    if (!settingsOverlay || !settingsSidebar) return;
+    settingsOverlay.classList.add("hidden");
+    settingsSidebar.classList.remove("open");
+  }
   if (openSettingsBtn) openSettingsBtn.addEventListener("click", openSidebar);
   if (closeSettingsBtn) closeSettingsBtn.addEventListener("click", closeSidebar);
   if (settingsOverlay) settingsOverlay.addEventListener("click", closeSidebar);
 
-  // ===== AI Assist =====
-  const AI_ASSIST_KEY = "aiAssistEnabled";
-  function getAiEnabled() { return localStorage.getItem(AI_ASSIST_KEY) === "1"; }
-  function setAiEnabled(v) { localStorage.setItem(AI_ASSIST_KEY, v ? "1" : "0"); }
-  if (aiAssistToggle) aiAssistToggle.checked = getAiEnabled();
-  if (aiAssistToggle) aiAssistToggle.addEventListener("change", () => setAiEnabled(aiAssistToggle.checked));
+  // Auto-detect backend URL
+  function computeBackendUrl() {
+    const hostname = window.location.hostname;
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return "http://localhost:5000";
+    }
+    return (window.BACKEND_URL || "").replace(/\/+$/, "");
+  }
 
-  // ===== Connection Status =====
+  const BASE_URL = computeBackendUrl();
+  const WS_URL = BASE_URL + "/ws";
+
   function setStatus(connected) {
     if (!statusEl || !statusText) return;
     statusEl.className = `inline-flex items-center gap-2 px-4 py-2 rounded-full mt-5 ${
@@ -108,22 +131,19 @@
     statusText.textContent = connected ? "Connected" : "Connecting...";
   }
 
-  // ===== Maintenance UI =====
   function setMaintenanceUI(state) {
     maintenance = { ...maintenance, ...state };
     const on = !!maintenance.status;
     if (maintenanceBanner) maintenanceBanner.classList.toggle("hidden", !on);
-    if (maintenanceText) maintenanceText.textContent = maintenance.message || "🚧 Server under maintenance. Chat is temporarily disabled.";
 
-    if (maintenance.logoUrl) {
-      if (maintenanceLogo) {
-        maintenanceLogo.src = maintenance.logoUrl;
-        maintenanceLogo.classList.remove("hidden");
-      }
-    } else {
-      if (maintenanceLogo) {
-        maintenanceLogo.classList.add("hidden");
-        maintenanceLogo.removeAttribute("src");
+    if (maintenanceText) maintenanceText.textContent = maintenance.message || "🚧 Server under maintenance. Chat is temporarily disabled.";
+    if (maintenanceLogoImg) {
+      if (maintenance.logoUrl) {
+        maintenanceLogoImg.src = maintenance.logoUrl;
+        maintenanceLogoImg.classList.remove("hidden");
+      } else {
+        maintenanceLogoImg.classList.add("hidden");
+        maintenanceLogoImg.removeAttribute("src");
       }
     }
 
@@ -134,16 +154,25 @@
           maintenanceTimerNote.textContent = `Maintenance will end at ${d.toLocaleString()}`;
           maintenanceTimerNote.classList.remove("hidden");
         }
-        if (maintUntilText) { maintUntilText.textContent = `Ends at: ${d.toLocaleString()}`; maintUntilText.classList.remove("hidden"); }
+        if (maintUntilText) {
+          maintUntilText.textContent = `Ends at: ${d.toLocaleString()}`;
+          maintUntilText.classList.remove("hidden");
+        }
       }
     } else {
       if (maintenanceTimerNote) maintenanceTimerNote.classList.add("hidden");
       if (maintUntilText) maintUntilText.classList.add("hidden");
     }
 
-    // Disable inputs during maintenance
-    if (qInput) { qInput.disabled = on; qInput.classList.toggle("opacity-60", on); }
-    if (askBtn) { askBtn.disabled = on; askBtn.classList.toggle("opacity-60", on); }
+    // disable inputs everywhere
+    if (qInput) {
+      qInput.disabled = on;
+      qInput.classList.toggle("opacity-60", on);
+    }
+    if (askBtn) {
+      askBtn.disabled = on;
+      askBtn.classList.toggle("opacity-60", on);
+    }
 
     document.querySelectorAll('[data-replies]').forEach(container => {
       const parent = container.closest('[data-qid]');
@@ -157,15 +186,14 @@
     });
   }
 
-  // ===== Questions =====
   async function fetchQuestions() {
     try {
-      const res = await fetch(`${BACKEND_URL}/api/questions`);
-      if (!res.ok) throw new Error();
+      const res = await fetch(BASE_URL + "/api/questions");
+      if (!res.ok) throw new Error("Failed to fetch questions");
       const list = await res.json();
       renderQuestions(list);
     } catch (e) {
-      console.error("Failed to fetch questions:", e);
+      console.error("fetchQuestions error:", e);
     }
   }
 
@@ -184,23 +212,9 @@
   function userBadge(name) {
     const safe = escapeHTML(name || "anonymous");
     return `<span class="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700
-                        dark:bg-gray-700 dark:text-gray-100">👤 ${safe}</span>`;
-  }
-
-  // ===== Typing Indicators =====
-  const typingTimers = new Map();
-
-  function showTyping(targetEl, who) {
-    if (!targetEl) return;
-    targetEl.innerHTML = `<span class="inline-flex items-center gap-1 text-gray-500">
-        <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
-        <span class="ml-1 text-xs">${who} is typing…</span>
-      </span>`;
-  }
-
-  function hideTyping(targetEl) {
-    if (!targetEl) return;
-    targetEl.textContent = "";
+                          dark:bg-gray-700 dark:text-gray-100">
+              👤 ${safe}
+            </span>`;
   }
 
   function questionCard(q) {
@@ -220,9 +234,6 @@
         </div>
         <div class="flex gap-2 items-center" data-admin-actions></div>
       </div>
-
-      <div class="mt-3 h-4 text-xs text-gray-500" data-thread-typing></div>
-
       <div class="mt-4 space-y-2" data-replies></div>
       <div class="mt-4 flex gap-2">
         <input type="text" placeholder="Write a reply..."
@@ -237,29 +248,27 @@
 
     const input = card.querySelector("input");
     const btn = card.querySelector("button");
-    const typingEl = card.querySelector("[data-thread-typing]");
 
-    btn.addEventListener("click", () => sendReply(q.id, input, typingEl));
-    input.addEventListener("keypress", (e) => { if (e.key === "Enter") sendReply(q.id, input, typingEl); });
-    input.addEventListener("input", () => emitTyping(q.id));
+    btn.addEventListener("click", () => sendReply(q.id, input));
+    input.addEventListener("keypress", (e) => { if (e.key === "Enter") sendReply(q.id, input); });
 
     if (adminToken) renderAdminDelete(card, q.id);
-
     return card;
   }
 
   function appendReply(repliesEl, qid, r) {
+    if (!repliesEl) return;
     const li = document.createElement("div");
     li.className = "bg-gray-50 dark:bg-gray-900 rounded-xl px-3 py-2 text-sm flex justify-between items-center";
     const date = new Date(r.createdAt || Date.now());
-    const who = r.user ? userBadge(r.user) : "";
     li.innerHTML = `
       <span>
-        ${escapeHTML(r.text)} ${who ? `<span class="ml-2">${who}</span>` : ""}
+        ${escapeHTML(r.text)}
+        <span class="ml-2">${userBadge(r.user)}</span>
         <span class="ml-2 text-xs text-gray-400">${date.toLocaleString()}</span>
       </span>
     `;
-    if (adminToken && r.id) {
+    if (adminToken && r.user !== "AI Assistant") {
       const delBtn = document.createElement("button");
       delBtn.textContent = "Delete";
       delBtn.className = "text-xs text-red-600 hover:text-red-800 ml-2 underline";
@@ -270,26 +279,22 @@
   }
 
   function escapeHTML(str) {
-    return String(str ?? "").replace(/[&<>\"']/g, (m) => 
-      ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
+    return String(str ?? "").replace(/[&<>"']/g, (m) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[m]));
   }
 
-  // ===== Question/Reply Submission =====
   if (askBtn) askBtn.addEventListener("click", sendQuestion);
   if (qInput) qInput.addEventListener("keypress", (e) => { if (e.key === "Enter") sendQuestion(); });
-  if (qInput) qInput.addEventListener("input", () => emitTyping(null));
 
   async function sendQuestion() {
-    const text = qInput?.value.trim();
+    if (!qInput) return;
+    const text = qInput.value.trim();
     if (!text) return;
-
     try {
-      const res = await fetch(`${BACKEND_URL}/api/questions`, {
+      const res = await fetch(BASE_URL + "/api/questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, user: tempUser }),
+        body: JSON.stringify({ text, user: tempUser, ai: isAIModeOn() }),
       });
-
       if (!res.ok) {
         if (res.status === 503) {
           const data = await res.json().catch(() => ({}));
@@ -301,51 +306,27 @@
           });
           alert("🚧 Server under maintenance. Try later.");
         } else {
-          alert("Failed to post question");
+          alert("Create failed");
         }
         return;
       }
-
-      const posted = await res.json().catch(() => null);
       qInput.value = "";
-
-      // AI Assist
-      if (getAiEnabled()) {
-        try {
-          const aiRes = await fetch(`${BACKEND_URL}/api/ai`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 
-              questionId: posted?.id, 
-              prompt: text 
-            })
-          });
-
-          if (aiRes.ok) {
-            const aiReply = await aiRes.json();
-            addReply(aiReply.questionId, aiReply);
-          }
-        } catch (e) {
-          console.error("AI assist failed:", e);
-        }
-      }
-    } catch (e) {
-      console.error("Failed to post question:", e);
+    } catch (err) {
+      console.error("sendQuestion error:", err);
       alert("Failed to post. Check connection.");
     }
   }
 
-  async function sendReply(qid, input, typingEl) {
-    const text = input?.value.trim();
+  async function sendReply(qid, input) {
+    if (!input) return;
+    const text = input.value.trim();
     if (!text) return;
-
     try {
-      const res = await fetch(`${BACKEND_URL}/api/questions/${qid}/replies`, {
+      const res = await fetch(BASE_URL + `/api/questions/${qid}/replies`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, user: tempUser }),
+        body: JSON.stringify({ text, user: tempUser, ai: isAIModeOn() }),
       });
-
       if (!res.ok) {
         if (res.status === 503) {
           const data = await res.json().catch(() => ({}));
@@ -357,44 +338,32 @@
           });
           alert("🚧 Server under maintenance. Try later.");
         } else {
-          alert("Failed to post reply");
+          alert("Reply failed");
         }
         return;
       }
-
       input.value = "";
-      if (typingEl) hideTyping(typingEl);
-    } catch (e) {
-      console.error("Failed to post reply:", e);
+    } catch (err) {
+      console.error("sendReply error:", err);
       alert("Failed to send reply. Check connection.");
     }
   }
 
-  // ===== WebSocket =====
+  // WebSocket
   let sock;
-  let reconnectAttempts = 0;
-  const MAX_RECONNECT_ATTEMPTS = 5;
-  const RECONNECT_DELAY = 1500;
-
   function connectWS() {
     setStatus(false);
     try {
-      sock = new SockJS(`${BACKEND_URL}/ws`);
+      sock = new SockJS(WS_URL);
     } catch (e) {
-      console.error("Failed to init SockJS:", e);
+      console.error("SockJS init error:", e);
       return;
     }
-
     sock.onopen = () => {
       setStatus(true);
-      reconnectAttempts = 0;
-      try {
-        sock.send(JSON.stringify({ type: "set-username", username: tempUser }));
-      } catch (e) {
-        console.error("Failed to send username:", e);
-      }
+      // send username so the backend can display members properly
+      try { sock.send(JSON.stringify({ type: "set-username", username: tempUser })); } catch {}
     };
-
     sock.onmessage = (e) => {
       try {
         const msg = JSON.parse(e.data);
@@ -404,111 +373,70 @@
         else if (msg.type === "delete-reply") removeReply(msg.payload.questionId, msg.payload.replyId);
         else if (msg.type === "clear-all") fetchQuestions();
         else if (msg.type === "maintenance") setMaintenanceUI(msg.payload);
-        else if (msg.type === "typing") handleTypingEvent(msg.payload);
-      } catch (e) {
-        console.error("Failed to process WS message:", e);
+      } catch (err) {
+        // ignore parse errors
       }
     };
-
     sock.onclose = () => {
       setStatus(false);
-      if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-        reconnectAttempts++;
-        setTimeout(connectWS, RECONNECT_DELAY * Math.pow(2, reconnectAttempts));
-      }
+      // try reconnect after a bit
+      setTimeout(connectWS, 1500);
     };
-
-    sock.onerror = (e) => {
-      console.error("WebSocket error:", e);
-      setStatus(false);
-    };
-  }
-
-  function handleTypingEvent(payload) {
-    const { questionId, username } = payload || {};
-    if (!username || username === tempUser) return;
-
-    const key = questionId || "main";
-    const prevTimer = typingTimers.get(key);
-    if (prevTimer) clearTimeout(prevTimer);
-
-    const targetEl = questionId 
-      ? [...qList.children].find((el) => el.dataset.qid === questionId)?.querySelector("[data-thread-typing]")
-      : mainTyping;
-
-    if (targetEl) {
-      showTyping(targetEl, username);
-      const t = setTimeout(() => hideTyping(targetEl), 1200);
-      typingTimers.set(key, t);
-    }
-  }
-
-  function emitTyping(qid) {
-    try {
-      sock?.send(JSON.stringify({ type: "typing", questionId: qid || null, username: tempUser }));
-    } catch (e) {
-      console.error("Failed to send typing indicator:", e);
-    }
   }
 
   function prependQuestion(q) {
-    if (emptyEl) emptyEl.style.display = "none";
-    if (qList) qList.prepend(questionCard(q));
+    if (!qList || !emptyEl) return;
+    emptyEl.style.display = "none";
+    qList.prepend(questionCard(q));
     setMaintenanceUI(maintenance);
   }
-
   function addReply(qid, reply) {
+    if (!qList) return fetchQuestions();
     const card = [...qList.children].find((el) => el.dataset.qid === qid);
     if (!card) return fetchQuestions();
     const repliesEl = card.querySelector("[data-replies]");
     appendReply(repliesEl, qid, reply);
     setMaintenanceUI(maintenance);
   }
-
   function removeQuestion(qid) {
+    if (!qList) return;
     const card = [...qList.children].find((el) => el.dataset.qid === qid);
     if (card) card.remove();
     if (qList.children.length === 0 && emptyEl) emptyEl.style.display = "";
   }
-
-  function removeReply(qid, rid) { 
-    // For simplicity we refetch full list. Could be optimized to remove single DOM node.
-    fetchQuestions(); 
+  function removeReply(qid, rid) {
+    // simplest: re-fetch to ensure consistent state
+    fetchQuestions();
   }
 
-  // ===== Admin Functions =====
+  // Admin functions
   async function deleteQuestion(qid) {
     if (!adminToken) return;
     if (!confirm("Delete this question?")) return;
-
     try {
-      const res = await fetch(`${BACKEND_URL}/api/questions/${qid}`, {
+      const res = await fetch(BASE_URL + `/api/questions/${qid}`, {
         method: "DELETE",
         headers: { Authorization: "Bearer " + adminToken },
       });
-
       if (!res.ok) throw new Error();
       fetchQuestions();
-    } catch (e) {
-      console.error("Failed to delete question:", e);
+    } catch (err) {
+      console.error("deleteQuestion error:", err);
       alert("❌ Failed to delete question");
     }
   }
-
   async function deleteReply(qid, rid) {
     if (!adminToken) return;
     if (!confirm("Delete this reply?")) return;
-
     try {
-      const res = await fetch(`${BACKEND_URL}/api/questions/${qid}/replies/${rid}`, {
+      const res = await fetch(BASE_URL + `/api/questions/${qid}/replies/${rid}`, {
         method: "DELETE",
         headers: { Authorization: "Bearer " + adminToken },
       });
-
       if (!res.ok) throw new Error();
       fetchQuestions();
-    } catch (e) {
-      console.error("Failed to delete reply:", e);
+    } catch (err) {
+      console.error("deleteReply error:", err);
       alert("❌ Failed to delete reply");
     }
   }
@@ -524,36 +452,32 @@
     adminActions.appendChild(delBtn);
   }
 
-  // ===== Admin Modal =====
+  // Admin modal
   const adminModal = document.getElementById("adminModal");
   const adminPasswordInput = document.getElementById("adminPasswordInput");
   const adminCancelBtn = document.getElementById("adminCancelBtn");
   const adminSubmitBtn = document.getElementById("adminSubmitBtn");
 
   function showAdminModal() {
-    if (!adminModal) return;
+    if (!adminModal || !adminPasswordInput) return;
     adminPasswordInput.value = "";
     adminModal.classList.remove("hidden");
     adminPasswordInput.focus();
   }
-
   if (adminLoginBtn) adminLoginBtn.addEventListener("click", showAdminModal);
   if (adminCancelBtn) adminCancelBtn.addEventListener("click", () => adminModal.classList.add("hidden"));
 
   async function loginAdmin(password) {
     if (!password) return alert("Please enter password");
-
     try {
-      const res = await fetch(`${BACKEND_URL}/api/admin/login`, {
+      const res = await fetch(BASE_URL + "/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: "admin", password })
       });
-
-      if (!res.ok) throw new Error();
-
+      if (!res.ok) throw new Error("login failed");
       const data = await res.json();
-      adminToken = data.token;
+      adminToken = data.token; // memory only
       alert("✅ Admin logged in");
       if (clearAllBtn) clearAllBtn.classList.remove("hidden");
       if (maintenanceBtn) maintenanceBtn.classList.remove("hidden");
@@ -561,138 +485,156 @@
 
       fetchAdminMembers();
       fetchMaintenanceStatus();
-
-      // Enable admin controls on existing cards
-      [...qList.children].forEach((card) => {
+      [...(qList ? qList.children : [])].forEach((card) => {
         const qid = card.dataset.qid;
         if (qid) renderAdminDelete(card, qid);
       });
-    } catch (e) {
-      console.error("Admin login failed:", e);
+    } catch (err) {
+      console.error("loginAdmin error:", err);
       alert("❌ Admin login failed");
     }
   }
 
   if (adminSubmitBtn) adminSubmitBtn.addEventListener("click", () => loginAdmin(adminPasswordInput.value.trim()));
-  if (adminPasswordInput) adminPasswordInput.addEventListener("keypress", (e) => { 
-    if (e.key === "Enter") loginAdmin(adminPasswordInput.value.trim()); 
+  if (adminPasswordInput) adminPasswordInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") loginAdmin(adminPasswordInput.value.trim());
   });
 
-  // ===== Clear All =====
+  // Clear all (DELETE /api/questions)
   if (clearAllBtn) clearAllBtn.addEventListener("click", async () => {
     if (!adminToken) return alert("Not logged in as admin");
     if (!confirm("Clear ALL questions and replies?")) return;
-
     try {
-      const res = await fetch(`${BACKEND_URL}/api/questions`, {
+      const res = await fetch(BASE_URL + "/api/questions", {
         method: "DELETE",
         headers: { Authorization: "Bearer " + adminToken },
       });
-
       if (!res.ok) throw new Error();
-
       fetchQuestions();
-      alert("✅ All questions cleared");
-    } catch (e) {
-      console.error("Failed to clear questions:", e);
-      alert("❌ Failed to clear questions");
+      alert("✅ All cleared");
+    } catch (err) {
+      console.error("clearAll error:", err);
+      alert("❌ Failed to clear all");
     }
   });
 
-  // ===== Maintenance Controls =====
-  if (maintenanceBtn) maintenanceBtn.addEventListener("click", () => {
-    if (maintenancePanel) maintenancePanel.classList.toggle("hidden");
-  });
+  // Maintenance panel show/hide & actions
+  function showMaintenancePanel() {
+    if (!maintenancePanel) return;
+    maintenancePanel.classList.remove("hidden");
+    if (maintMessage) maintMessage.value = maintenance.message || "";
+    if (maintLogo) maintLogo.value = maintenance.logoUrl || "";
+    if (maintDuration) maintDuration.value = maintenance.until ? new Date(maintenance.until).toISOString().slice(0,16) : "";
+  }
+  function hideMaintenancePanel() {
+    if (!maintenancePanel) return;
+    maintenancePanel.classList.add("hidden");
+  }
+  if (maintenanceBtn) maintenanceBtn.addEventListener("click", showMaintenancePanel);
 
-  if (applyMaintBtn) applyMaintBtn.addEventListener("click", async () => {
-    if (!adminToken) return alert("Not logged in as admin");
-    const durationVal = maintDuration.value.trim();
-    const durationMinutes = durationVal === "" ? undefined : Number(durationVal);
-
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/admin/maintenance`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + adminToken,
-        },
-        body: JSON.stringify({
-          status: true,
-          message: maintMessage.value.trim() || maintenance.message,
-          logoUrl: maintLogo.value.trim() || "",
-          duration: durationMinutes,
-        }),
-      });
-
-      if (!res.ok) throw new Error();
-
-      const data = await res.json();
-      setMaintenanceUI(data);
-      alert("✅ Maintenance mode enabled");
-    } catch (e) {
-      console.error("Failed to enable maintenance:", e);
-      alert("❌ Failed to enable maintenance");
-    }
-  });
-
-  if (disableMaintBtn) disableMaintBtn.addEventListener("click", async () => {
-    if (!adminToken) return alert("Not logged in as admin");
-
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/admin/maintenance`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + adminToken,
-        },
-        body: JSON.stringify({
-          status: false,
-        }),
-      });
-
-      if (!res.ok) throw new Error();
-
-      const data = await res.json();
-      setMaintenanceUI(data);
-      alert("✅ Maintenance mode disabled");
-    } catch (e) {
-      console.error("Failed to disable maintenance:", e);
-      alert("❌ Failed to disable maintenance");
-    }
-  });
-
-  // ===== Admin Members =====
-  async function fetchAdminMembers() {
+  // fetch current maintenance status (admin)
+  async function fetchMaintenanceStatus() {
     if (!adminToken) return;
     try {
-      const res = await fetch(`${BACKEND_URL}/api/admin/members`, {
+      const res = await fetch(BASE_URL + "/api/admin/maintenance", {
+        headers: { Authorization: "Bearer " + adminToken },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      // expected { status, message, logoUrl, until }
+      setMaintenanceUI(data);
+      showMaintenancePanel();
+    } catch (err) {
+      console.error("fetchMaintenanceStatus error:", err);
+    }
+  }
+
+  // apply maintenance - PUT /api/admin/maintenance
+  async function applyMaintenance() {
+    if (!adminToken) return alert("Not logged in as admin");
+    const message = maintMessage ? maintMessage.value.trim() : "";
+    const logoUrl = maintLogo ? maintLogo.value.trim() : "";
+    const untilRaw = maintDuration ? maintDuration.value : "";
+    let until = null;
+    if (untilRaw) {
+      const dt = new Date(untilRaw);
+      if (!isNaN(dt)) until = dt.toISOString();
+    }
+    try {
+      const res = await fetch(BASE_URL + "/api/admin/maintenance", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + adminToken },
+        body: JSON.stringify({ status: true, message, logoUrl, until }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setMaintenanceUI(data);
+      alert("✅ Maintenance applied");
+      hideMaintenancePanel();
+    } catch (err) {
+      console.error("applyMaintenance error:", err);
+      alert("❌ Failed to apply maintenance");
+    }
+  }
+
+  // disable maintenance - DELETE /api/admin/maintenance
+  async function disableMaintenance() {
+    if (!adminToken) return alert("Not logged in as admin");
+    if (!confirm("Disable maintenance mode?")) return;
+    try {
+      const res = await fetch(BASE_URL + "/api/admin/maintenance", {
+        method: "DELETE",
         headers: { Authorization: "Bearer " + adminToken },
       });
       if (!res.ok) throw new Error();
-      const data = await res.json();
-      console.log("👥 Members:", data.count ?? data.length ?? data);
-      // If you have an admin UI element to show member count, populate it here
-      const membersCountEl = document.getElementById("adminMembersCount");
-      if (membersCountEl) membersCountEl.textContent = data.count ?? data.length ?? "-";
-    } catch (e) {
-      console.error("Failed to fetch members:", e);
+      setMaintenanceUI({ status: false, message: "", logoUrl: "", until: null });
+      alert("✅ Maintenance disabled");
+      hideMaintenancePanel();
+    } catch (err) {
+      console.error("disableMaintenance error:", err);
+      alert("❌ Failed to disable maintenance");
     }
   }
 
-  // ===== Maintenance Status Fetch =====
-  async function fetchMaintenanceStatus() {
+  if (applyMaintBtn) applyMaintBtn.addEventListener("click", applyMaintenance);
+  if (disableMaintBtn) disableMaintBtn.addEventListener("click", disableMaintenance);
+
+  // admin members fetch + render (optional)
+  async function fetchAdminMembers() {
+    if (!adminToken || !adminMembersList) return;
     try {
-      const res = await fetch(`${BACKEND_URL}/api/maintenance`);
-      if (!res.ok) throw new Error();
+      const res = await fetch(BASE_URL + "/api/admin/members", {
+        headers: { Authorization: "Bearer " + adminToken },
+      });
+      if (!res.ok) return;
       const data = await res.json();
-      setMaintenanceUI(data);
-    } catch (e) {
-      console.error("Failed to fetch maintenance status:", e);
+      renderAdminMembers(data || []);
+    } catch (err) {
+      console.error("fetchAdminMembers error:", err);
     }
   }
+  function renderAdminMembers(list) {
+    if (!adminMembersList) return;
+    adminMembersList.innerHTML = "";
+    list.forEach(m => {
+      const li = document.createElement("div");
+      li.className = "flex items-center justify-between py-1";
+      li.innerHTML = `<span class="text-sm">${escapeHTML(m.username || m)}</span>
+                      <span class="text-xs text-gray-400">${m.online ? "online" : "offline"}</span>`;
+      adminMembersList.appendChild(li);
+    });
+  }
 
-  // ===== Init =====
+  // initial load
   fetchQuestions();
   connectWS();
-  fetchMaintenanceStatus();
+
+  // expose some helpers to window for debugging (optional)
+  window.DEBUG_APP = {
+    fetchQuestions,
+    fetchMaintenanceStatus,
+    applyMaintenance,
+    disableMaintenance,
+    getAdminToken: () => adminToken,
+  };
 })();
