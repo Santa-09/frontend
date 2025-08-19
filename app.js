@@ -25,8 +25,8 @@
   const maintenanceLogoImg = document.getElementById("maintenanceLogo");
   const maintenanceTimerNote = document.getElementById("maintenanceTimerNote");
 
-  // Optional admin members panel
-  const adminMembersList = document.getElementById("adminMembersList");
+  // Admin members panel (FIX: use #membersList which exists in HTML)
+  const adminMembersList = document.getElementById("membersList"); // FIX
 
   // Settings / Theme / AI mode
   const openSettingsBtn = document.getElementById("openSettingsBtn");
@@ -138,8 +138,8 @@
   }
   const BASE_URL = computeBackendUrl();
 
-  // ⚠️ FIXED: match backend `/ws/` prefix
-  const WS_HTTP = BASE_URL + "/ws/";
+  // FIX: remove trailing slash. SockJS expects a prefix without ending "/"
+  const WS_HTTP = BASE_URL + "/ws"; // FIX (was "/ws/")
   const WS_NATIVE = WS_HTTP.replace(/^http/i, (m) =>
     m.toLowerCase() === "https" ? "wss" : "ws"
   );
@@ -377,7 +377,7 @@
     setStatus(false);
     try {
       if (window.SockJS) {
-        sock = new SockJS(WS_HTTP);
+        sock = new SockJS(WS_HTTP); // FIX: WS_HTTP has no trailing slash
       } else {
         sock = new WebSocket(WS_NATIVE);
       }
@@ -432,9 +432,7 @@
     if (card) card.remove();
     if (qList.children.length === 0 && emptyEl) emptyEl.style.display = "";
   }
-  function removeReply() {
-    fetchQuestions();
-  }
+  function removeReply() { fetchQuestions(); }
 
   // ------- Admin actions -------
   async function deleteQuestion(qid) {
@@ -529,13 +527,26 @@
     maintenancePanel.classList.remove("hidden");
     if (maintMessage) maintMessage.value = maintenance.message || "";
     if (maintLogo) maintLogo.value = maintenance.logoUrl || "";
-    if (maintDuration) maintDuration.value = maintenance.until ? new Date(maintenance.until).toISOString().slice(0,16) : "";
+    if (maintDuration) {
+      if (maintenance.until) {
+        const d = new Date(maintenance.until);
+        if (!isNaN(d)) {
+          // datetime-local expects "YYYY-MM-DDTHH:mm"
+          const pad = (n) => String(n).padStart(2, "0");
+          const iso = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+          maintDuration.value = iso;
+        }
+      } else {
+        maintDuration.value = "";
+      }
+    }
   }
   function hideMaintenancePanel() {
     if (!maintenancePanel) return;
     maintenancePanel.classList.add("hidden");
   }
   if (maintenanceBtn) maintenanceBtn.addEventListener("click", showMaintenancePanel);
+
   async function fetchMaintenanceStatus() {
     if (!adminToken) return;
     try {
@@ -550,15 +561,17 @@
       console.error("fetchMaintenanceStatus error:", err);
     }
   }
+
   async function applyMaintenance() {
     if (!adminToken) return alert("Not logged in as admin");
     const message = maintMessage ? maintMessage.value.trim() : "";
     const logoUrl = maintLogo ? maintLogo.value.trim() : "";
-    const untilRaw = maintDuration ? maintDuration.value : "";
+    const untilRaw = maintDuration ? maintDuration.value : ""; // "YYYY-MM-DDTHH:mm"
     let until = null;
     if (untilRaw) {
-      const dt = new Date(untilRaw);
-      if (!isNaN(dt)) until = dt.toISOString();
+      // interpret as local time and convert to ISO
+      const local = new Date(untilRaw.replace(" ", "T"));
+      if (!isNaN(local)) until = new Date(local.getTime() - local.getTimezoneOffset()*60000).toISOString();
     }
     try {
       const res = await fetch(BASE_URL + "/api/admin/maintenance", {
@@ -614,10 +627,9 @@
     if (!adminMembersList) return;
     adminMembersList.innerHTML = "";
     list.forEach((m) => {
-      const li = document.createElement("div");
-      li.className = "flex items-center justify-between py-1";
-      li.innerHTML = `<span class="text-sm">${escapeHTML(m.username || m)}</span>
-                      <span class="text-xs text-gray-400">${m.online ? "online" : "offline"}</span>`;
+      const li = document.createElement("li");
+      li.className = "text-sm";
+      li.innerHTML = `${escapeHTML(m.username || m)} <span class="text-xs text-gray-400">${m.online ? "online" : "offline"}</span>`;
       adminMembersList.appendChild(li);
     });
   }
