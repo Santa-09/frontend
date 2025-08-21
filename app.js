@@ -12,7 +12,7 @@
   const clearAllBtn = document.getElementById("clearAllBtn");
   const maintenanceBtn = document.getElementById("maintenanceBtn");
   const maintenancePanel = document.getElementById("maintenancePanel");
-  const maintDuration = document.getElementById("maintDuration");
+  const maintDuration = document.getElementById("maintDuration"); // minutes
   const maintMessage = document.getElementById("maintMessage");
   const maintLogo = document.getElementById("maintLogo");
   const applyMaintBtn = document.getElementById("applyMaintBtn");
@@ -25,8 +25,10 @@
   const maintenanceLogoImg = document.getElementById("maintenanceLogo");
   const maintenanceTimerNote = document.getElementById("maintenanceTimerNote");
 
-  // Admin members panel (FIX: use #membersList which exists in HTML)
-  const adminMembersList = document.getElementById("membersList"); // FIX
+  // Admin members panel
+  const adminMembersList = document.getElementById("membersList");
+  const adminMembersBox = document.getElementById("adminMembers");
+  const totalMembersCount = document.getElementById("totalMembersCount");
 
   // Settings / Theme / AI mode
   const openSettingsBtn = document.getElementById("openSettingsBtn");
@@ -138,8 +140,8 @@
   }
   const BASE_URL = computeBackendUrl();
 
-  // FIX: remove trailing slash. SockJS expects a prefix without ending "/"
-  const WS_HTTP = BASE_URL + "/ws"; // FIX (was "/ws/")
+  // SockJS endpoint (no trailing slash)
+  const WS_HTTP = BASE_URL + "/ws";
   const WS_NATIVE = WS_HTTP.replace(/^http/i, (m) =>
     m.toLowerCase() === "https" ? "wss" : "ws"
   );
@@ -377,7 +379,7 @@
     setStatus(false);
     try {
       if (window.SockJS) {
-        sock = new SockJS(WS_HTTP); // FIX: WS_HTTP has no trailing slash
+        sock = new SockJS(WS_HTTP);
       } else {
         sock = new WebSocket(WS_NATIVE);
       }
@@ -435,6 +437,21 @@
   function removeReply() { fetchQuestions(); }
 
   // ------- Admin actions -------
+  async function clearAll() {
+    if (!adminToken) return;
+    if (!confirm("Clear all questions?")) return;
+    try {
+      const res = await fetch(BASE_URL + `/api/admin/clear-all`, {
+        method: "DELETE",
+        headers: { Authorization: "Bearer " + adminToken },
+      });
+      if (!res.ok) throw new Error();
+      fetchQuestions();
+    } catch (err) {
+      console.error("clearAll error:", err);
+      alert("❌ Failed to clear");
+    }
+  }
   async function deleteQuestion(qid) {
     if (!adminToken) return;
     if (!confirm("Delete this question?")) return;
@@ -502,9 +519,14 @@
       const data = await res.json();
       adminToken = data.token;
       alert("✅ Admin logged in");
-      if (clearAllBtn) clearAllBtn.classList.remove("hidden");
+      if (clearAllBtn) {
+        clearAllBtn.classList.remove("hidden");
+        clearAllBtn.onclick = clearAll; // attach handler
+      }
       if (maintenanceBtn) maintenanceBtn.classList.remove("hidden");
       if (adminModal) adminModal.classList.add("hidden");
+      // show members box
+      if (adminMembersBox) adminMembersBox.classList.remove("hidden");
       fetchAdminMembers();
       fetchMaintenanceStatus();
       [...(qList ? qList.children : [])].forEach((card) => {
@@ -528,17 +550,8 @@
     if (maintMessage) maintMessage.value = maintenance.message || "";
     if (maintLogo) maintLogo.value = maintenance.logoUrl || "";
     if (maintDuration) {
-      if (maintenance.until) {
-        const d = new Date(maintenance.until);
-        if (!isNaN(d)) {
-          // datetime-local expects "YYYY-MM-DDTHH:mm"
-          const pad = (n) => String(n).padStart(2, "0");
-          const iso = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-          maintDuration.value = iso;
-        }
-      } else {
-        maintDuration.value = "";
-      }
+      // we use minutes; default blank
+      maintDuration.value = "";
     }
   }
   function hideMaintenancePanel() {
@@ -566,12 +579,14 @@
     if (!adminToken) return alert("Not logged in as admin");
     const message = maintMessage ? maintMessage.value.trim() : "";
     const logoUrl = maintLogo ? maintLogo.value.trim() : "";
-    const untilRaw = maintDuration ? maintDuration.value : ""; // "YYYY-MM-DDTHH:mm"
+    const minutesStr = maintDuration ? maintDuration.value.trim() : "";
     let until = null;
-    if (untilRaw) {
-      // interpret as local time and convert to ISO
-      const local = new Date(untilRaw.replace(" ", "T"));
-      if (!isNaN(local)) until = new Date(local.getTime() - local.getTimezoneOffset()*60000).toISOString();
+    if (minutesStr) {
+      const mins = parseInt(minutesStr, 10);
+      if (!isNaN(mins) && mins > 0) {
+        const d = new Date(Date.now() + mins * 60000);
+        until = d.toISOString();
+      }
     }
     try {
       const res = await fetch(BASE_URL + "/api/admin/maintenance", {
@@ -632,6 +647,8 @@
       li.innerHTML = `${escapeHTML(m.username || m)} <span class="text-xs text-gray-400">${m.online ? "online" : "offline"}</span>`;
       adminMembersList.appendChild(li);
     });
+    if (totalMembersCount) totalMembersCount.textContent = String(list.length);
+    if (adminMembersBox) adminMembersBox.classList.remove("hidden");
   }
 
   // ------- Init -------
