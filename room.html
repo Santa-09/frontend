@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Room - Anonymous Chat Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366F1;
+            --primary-dark: #4F46E5;
+            --secondary: #8B5CF6;
+            --accent: #EC4899;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --info: #3B82F6;
+            --bg-primary: #FAFBFC;
+            --bg-secondary: #F3F4F6;
+            --card-bg: #FFFFFF;
+            --text-primary: #1F2937;
+            --text-secondary: #6B7280;
+            --text-muted: #9CA3AF;
+            --border: #E5E7EB;
+            --shadow: rgba(0, 0, 0, 0.05);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+        }
+
+        body.dark-mode {
+            --bg-primary: #111827;
+            --bg-secondary: #1F2937;
+            --card-bg: #374151;
+            --text-primary: #F9FAFB;
+            --text-secondary: #D1D5DB;
+            --text-muted: #9CA3AF;
+            --border: #4B5563;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+
+        /* Room Header */
+        .room-header {
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .back-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-sm);
+            border: none;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .room-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .room-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-md);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.25rem;
+        }
+
+        .room-title-group h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .room-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .room-id {
+            font-family: 'Space Grotesk', monospace;
+            font-weight: 600;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .online-users {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.875rem;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .admin-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.875rem;
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: var(--radius-md);
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--warning);
+        }
+
+        .menu-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-sm);
+            border: none;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .menu-btn:hover {
+            background: var(--border);
+        }
+
+        .theme-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-sm);
+            border: none;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .theme-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Dropdown Menu */
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            width: 200px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 10px 30px var(--shadow);
+            padding: 0.5rem;
+            display: none;
+            z-index: 1000;
+        }
+
+        .dropdown-menu.active {
+            display: block;
+            animation: slideDown 0.2s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            width: 100%;
+            padding: 0.75rem;
+            border: none;
+            background: transparent;
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.875rem;
+            text-align: left;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .dropdown-item:hover {
+            background: var(--bg-secondary);
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 0.5rem 0;
+        }
+
+        /* Main Layout */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 1.5rem;
+            max-width: 1400px;
+            margin: 1.5rem auto;
+            padding: 0 2rem;
+            height: calc(100vh - 80px);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: var(--card-bg);
+            border-radius: var(--radius-xl);
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 20px var(--shadow);
+            overflow-y: auto;
+            position: sticky;
+            top: 90px;
+            height: calc(100vh - 120px);
+        }
+
+        .sidebar-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Online Users List */
+        .users-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .user-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            border-radius: var(--radius-md);
+            transition: all 0.2s;
+        }
+
+        .user-item:hover {
+            background: var(--bg-secondary);
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .user-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .user-name {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .user-status {
+            font-size: 0.6875rem;
+            color: var(--text-muted);
+        }
+
+        /* Room Info */
+        .room-info-section {
+            padding: 1.5rem 0;
+            border-top: 1px solid var(--border);
+        }
+
+        .info-grid {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .info-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .info-value {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .info-value.status-active {
+            color: var(--success);
+        }
+
+        /* Admin Panel */
+        .admin-panel {
+            padding: 1.5rem 0;
+            border-top: 1px solid var(--border);
+            display: none;
+        }
+
+        .admin-panel.active {
+            display: block;
+        }
+
+        .admin-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--warning);
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .admin-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .admin-btn {
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .admin-btn:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .admin-btn.danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .admin-btn.danger:hover {
+            background: var(--danger);
+            color: white;
+        }
+
+        /* Chat Area */
+        .chat-area {
+            background: var(--card-bg);
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 20px var(--shadow);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* Messages Container */
+        .messages-container {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-muted);
+        }
+
+        .empty-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .empty-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-text {
+            font-size: 0.875rem;
+        }
+
+        /* Message Bubbles */
+        .message {
+            max-width: 70%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message.sent {
+            align-self: flex-end;
+        }
+
+        .message.received {
+            align-self: flex-start;
+        }
+
+        .message.system {
+            align-self: center;
+            max-width: 90%;
+        }
+
+        .message-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.25rem;
+            padding: 0 0.5rem;
+        }
+
+        .message-sender {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .message-time {
+            font-size: 0.6875rem;
+            color: var(--text-muted);
+        }
+
+        .message-bubble {
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius-lg);
+            position: relative;
+            word-wrap: break-word;
+            line-height: 1.5;
+            font-size: 0.875rem;
+        }
+
+        .message.sent .message-bubble {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border-bottom-right-radius: var(--radius-sm);
+        }
+
+        .message.received .message-bubble {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border-bottom-left-radius: var(--radius-sm);
+        }
+
+        .message.ai .message-bubble {
+            background: linear-gradient(135deg, var(--success), #34D399);
+            color: white;
+            border-bottom-left-radius: var(--radius-sm);
+        }
+
+        .message.system .message-bubble {
+            background: var(--card-bg);
+            color: var(--text-muted);
+            text-align: center;
+            font-size: 0.75rem;
+            border: 1px solid var(--border);
+        }
+
+        .message-text {
+            margin-bottom: 0.25rem;
+        }
+
+        /* Chat Input */
+        .chat-input-section {
+            padding: 1.5rem;
+            border-top: 1px solid var(--border);
+            background: var(--card-bg);
+        }
+
+        .input-container {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 0.875rem 1rem 0.875rem 3rem;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-lg);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.875rem;
+            resize: none;
+            min-height: 48px;
+            max-height: 120px;
+            transition: all 0.2s;
+        }
+
+        .message-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+
+        .send-btn {
+            padding: 0 1.5rem;
+            border: none;
+            border-radius: var(--radius-lg);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .send-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .input-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-options {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .option-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .option-btn:hover {
+            color: var(--primary);
+        }
+
+        .current-user {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .char-count {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal {
+            background: var(--card-bg);
+            border-radius: var(--radius-xl);
+            padding: 2rem;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.4s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .modal-header {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+
+        .modal-content {
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-text {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            line-height: 1.5;
+            margin-bottom: 1rem;
+        }
+
+        .kick-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 1rem;
+        }
+
+        .kick-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .kick-item:hover {
+            background: var(--bg-secondary);
+            border-color: var(--primary);
+        }
+
+        .kick-item.selected {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: var(--danger);
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 0.875rem;
+            border: none;
+            border-radius: var(--radius-md);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .modal-btn.cancel {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .modal-btn.cancel:hover {
+            background: var(--border);
+        }
+
+        .modal-btn.confirm {
+            background: linear-gradient(135deg, var(--danger), #F97316);
+            color: white;
+        }
+
+        .modal-btn.confirm:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+
+        .modal-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        /* Typing Indicator */
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.75rem 1rem;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            max-width: fit-content;
+            margin-bottom: 0.5rem;
+            align-self: flex-start;
+        }
+
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            animation: bounce 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+                padding: 1rem;
+            }
+
+            .sidebar {
+                display: none;
+            }
+
+            .sidebar.mobile-open {
+                display: block;
+                position: fixed;
+                top: 80px;
+                left: 0;
+                right: 0;
+                height: auto;
+                max-height: 50vh;
+                z-index: 100;
+                margin: 1rem;
+            }
+
+            .message {
+                max-width: 85%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .room-header {
+                padding: 1rem;
+            }
+
+            .online-users,
+            .admin-badge {
+                display: none;
+            }
+
+            .main-layout {
+                height: calc(100vh - 70px);
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Room Header -->
+    <header class="room-header">
+        <div class="header-left">
+            <a href="index.html" class="back-btn">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <div class="room-info">
+                <div class="room-icon">
+                    <i class="fas fa-comments"></i>
+                </div>
+                <div class="room-title-group">
+                    <h1 id="roomTitle">Loading Room...</h1>
+                    <div class="room-status">
+                        <span class="status-dot"></span>
+                        <span id="statusText">Connecting...</span>
+                        <span>•</span>
+                        <span class="room-id" id="roomIdDisplay"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="header-right">
+            <div class="online-users">
+                <i class="fas fa-users"></i>
+                <span id="onlineCount">0</span>
+            </div>
+            <div class="admin-badge hidden" id="adminBadge">
+                <i class="fas fa-crown"></i>
+                Room Admin
+            </div>
+            <div class="menu-container">
+                <button class="menu-btn" id="roomMenuBtn">
+                    <i class="fas fa-ellipsis-v"></i>
+                </button>
+                <div class="dropdown-menu" id="roomMenu">
+                    <button class="dropdown-item" onclick="copyRoomLink()">
+                        <i class="fas fa-link"></i>
+                        Copy Invite Link
+                    </button>
+                    <button class="dropdown-item" onclick="toggleAI()">
+                        <i class="fas fa-robot"></i>
+                        <span id="aiToggleText">Enable AI</span>
+                    </button>
+                    <button class="dropdown-item" onclick="clearChat()">
+                        <i class="fas fa-trash"></i>
+                        Clear Chat
+                    </button>
+                    <div class="dropdown-divider"></div>
+                    <button class="dropdown-item" onclick="leaveRoom()">
+                        <i class="fas fa-sign-out-alt"></i>
+                        Leave Room
+                    </button>
+                </div>
+            </div>
+            <button class="theme-btn" id="themeToggle">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Layout -->
+    <main class="main-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-title">
+                Online Users
+                <span class="info-value" id="userCount">0</span>
+            </div>
+
+            <div class="users-list" id="onlineUsersList">
+                <div class="empty-state" style="padding: 1rem 0;">
+                    <div class="empty-icon">
+                        <i class="fas fa-users-slash"></i>
+                    </div>
+                    <p class="empty-text">No other users online</p>
+                </div>
+            </div>
+
+            <!-- Room Info -->
+            <div class="room-info-section">
+                <div class="sidebar-title">Room Information</div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Created</span>
+                        <span class="info-value" id="roomCreatedAt">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Status</span>
+                        <span class="info-value status-active" id="roomStatus">Active</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">AI Assistant</span>
+                        <span class="info-value" id="roomAIStatus">Off</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Panel -->
+            <div class="admin-panel" id="adminPanel">
+                <div class="admin-title">
+                    <i class="fas fa-shield-alt"></i>
+                    Room Admin Panel
+                </div>
+                <div class="admin-actions">
+                    <button class="admin-btn danger" onclick="kickUserModal()">
+                        <i class="fas fa-user-slash"></i>
+                        Kick User
+                    </button>
+                    <button class="admin-btn" onclick="lockRoom()">
+                        <i class="fas fa-lock"></i>
+                        Lock Room
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Chat Area -->
+        <div class="chat-area">
+            <!-- Messages -->
+            <div class="messages-container" id="chatMessages">
+                <div class="empty-state">
+                    <div class="empty-icon">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                    <h3 class="empty-title">Welcome to the chat!</h3>
+                    <p class="empty-text">Start the conversation by sending a message below.</p>
+                </div>
+            </div>
+
+            <!-- Chat Input -->
+            <div class="chat-input-section">
+                <div class="input-container">
+                    <div style="position: relative; flex: 1;">
+                        <div class="input-icon">
+                            <i class="fas fa-paper-plane"></i>
+                        </div>
+                        <textarea 
+                            class="message-input"
+                            id="messageInput"
+                            placeholder="Type your message here..."
+                            maxlength="1000"
+                            rows="1"
+                        ></textarea>
+                    </div>
+                    <button class="send-btn" id="sendButton" onclick="sendMessage()">
+                        Send
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+
+                <div class="input-footer">
+                    <div class="chat-options">
+                        <button class="option-btn" onclick="toggleAIAssist()">
+                            <i class="fas fa-robot"></i>
+                            <span id="aiAssistText">Ask AI</span>
+                        </button>
+                        <div class="current-user">
+                            <i class="fas fa-user"></i>
+                            <span id="currentUsername">Loading...</span>
+                        </div>
+                    </div>
+                    <div class="char-count">
+                        <span id="charCount">0</span>/1000
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modals -->
+    <div class="modal-overlay" id="kickUserModal">
+        <div class="modal">
+            <h3 class="modal-header">Kick User from Room</h3>
+            <div class="modal-content">
+                <p class="modal-text">Select a user to remove from this room:</p>
+                <div class="kick-list" id="kickUsersList">
+                    <!-- Users will be added here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn cancel" onclick="closeKickModal()">
+                    Cancel
+                </button>
+                <button class="modal-btn confirm" id="confirmKickBtn" onclick="confirmKick()" disabled>
+                    Kick User
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="./js/room.js"></script>
+</body>
+</html>

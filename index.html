@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anonymous Chat Platform - Create/Join Room</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366F1;
+            --primary-dark: #4F46E5;
+            --secondary: #8B5CF6;
+            --accent: #EC4899;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --info: #3B82F6;
+            --bg-primary: #FAFBFC;
+            --bg-secondary: #F3F4F6;
+            --card-bg: #FFFFFF;
+            --text-primary: #1F2937;
+            --text-secondary: #6B7280;
+            --text-muted: #9CA3AF;
+            --border: #E5E7EB;
+            --shadow: rgba(0, 0, 0, 0.05);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+        }
+
+        body.dark-mode {
+            --bg-primary: #111827;
+            --bg-secondary: #1F2937;
+            --card-bg: #374151;
+            --text-primary: #F9FAFB;
+            --text-secondary: #D1D5DB;
+            --text-muted: #9CA3AF;
+            --border: #4B5563;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+
+        /* Navigation */
+        .navbar {
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-icon {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .logo-text {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-actions {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .icon-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            border: none;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            transition: all 0.2s;
+        }
+
+        .icon-btn:hover {
+            background: var(--primary);
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: var(--radius-md);
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--danger), #F97316);
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+        }
+
+        /* Hero Section */
+        .hero {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+
+        .hero-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 3rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            text-align: center;
+            max-width: 600px;
+            margin: 0 auto 3rem;
+            line-height: 1.6;
+        }
+
+        /* Cards Grid */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: var(--radius-xl);
+            padding: 2rem;
+            box-shadow: 0 4px 20px var(--shadow);
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px var(--shadow);
+            border-color: var(--primary);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .icon-create {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+        }
+
+        .icon-join {
+            background: linear-gradient(135deg, var(--success), #34D399);
+        }
+
+        .card-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .card-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .input {
+            flex: 1;
+            padding: 0.875rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        .input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .input-room-id {
+            font-family: 'Space Grotesk', monospace;
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-align: center;
+            text-transform: uppercase;
+        }
+
+        .btn-small {
+            padding: 0.875rem;
+            border-radius: var(--radius-md);
+            background: var(--bg-secondary);
+            border: none;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-small:hover {
+            background: var(--border);
+        }
+
+        /* Checkbox */
+        .checkbox-group {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+            align-items: center;
+        }
+
+        .checkbox-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .checkbox {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            border: 2px solid var(--border);
+            background: var(--bg-secondary);
+            cursor: pointer;
+            appearance: none;
+            position: relative;
+        }
+
+        .checkbox:checked {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .checkbox:checked::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        /* Buttons */
+        .btn-full {
+            width: 100%;
+            padding: 1rem;
+            border-radius: var(--radius-lg);
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+
+        .btn-create {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-create:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-join {
+            background: linear-gradient(135deg, var(--success), #34D399);
+            color: white;
+            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-join:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(16, 185, 129, 0.4);
+        }
+
+        /* Divider */
+        .divider {
+            text-align: center;
+            margin: 1.5rem 0;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            position: relative;
+        }
+
+        .divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .divider-text {
+            background: var(--card-bg);
+            padding: 0 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Info Box */
+        .info-box {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: var(--radius-lg);
+            padding: 1rem;
+            margin-top: 1rem;
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .info-icon {
+            color: var(--warning);
+            font-size: 1.125rem;
+            flex-shrink: 0;
+            margin-top: 0.125rem;
+        }
+
+        .info-text {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Features Grid */
+        .features {
+            max-width: 1000px;
+            margin: 4rem auto 0;
+            padding: 0 2rem;
+        }
+
+        .section-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 2rem;
+            color: var(--text-primary);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .feature-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            transition: all 0.2s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary);
+            box-shadow: 0 10px 25px var(--shadow);
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            color: white;
+            margin-bottom: 1rem;
+        }
+
+        .feature-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .feature-description {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            margin-top: 4rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .footer-text {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal {
+            background: var(--card-bg);
+            border-radius: var(--radius-xl);
+            padding: 2.5rem;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.4s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+            background: linear-gradient(135deg, var(--success), #34D399);
+        }
+
+        .modal-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .modal-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .modal-input-group {
+            margin-bottom: 1rem;
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-md);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .modal-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .modal-input-readonly {
+            background: rgba(99, 102, 241, 0.1);
+            border-color: var(--primary);
+            color: var(--primary);
+            font-family: 'Space Grotesk', monospace;
+            font-size: 1.25rem;
+            font-weight: 700;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .btn-copy {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            flex: 1;
+        }
+
+        .btn-copy:hover {
+            transform: translateY(-1px);
+        }
+
+        .btn-close {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-close:hover {
+            background: var(--border);
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1001;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loading-content {
+            text-align: center;
+        }
+
+        .loading-spinner {
+            width: 64px;
+            height: 64px;
+            border: 3px solid rgba(99, 102, 241, 0.3);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: white;
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero {
+                padding: 2rem 1rem;
+            }
+
+            .hero-title {
+                font-size: 2.25rem;
+            }
+
+            .hero-subtitle {
+                font-size: 1.125rem;
+            }
+
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .card {
+                padding: 1.5rem;
+            }
+
+            .navbar {
+                padding: 1rem;
+            }
+
+            .logo-text {
+                display: none;
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="logo">
+            <div class="logo-icon">
+                <i class="fas fa-comments"></i>
+            </div>
+            <span class="logo-text">AnonymousChat</span>
+        </div>
+        <div class="nav-actions">
+            <button class="icon-btn" id="themeToggle" title="Toggle Theme">
+                <i class="fas fa-moon"></i>
+            </button>
+            <a href="admin.html" class="btn btn-danger">
+                <i class="fas fa-shield-alt"></i>
+                Admin
+            </a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <main class="hero">
+        <h1 class="hero-title">Private, Anonymous & Secure</h1>
+        <p class="hero-subtitle">
+            Create a temporary chat room, invite friends, and chat anonymously. No sign-up required.
+        </p>
+
+        <!-- Cards Grid -->
+        <div class="cards-grid">
+            <!-- Create Room Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon icon-create">
+                        <i class="fas fa-plus"></i>
+                    </div>
+                    <div>
+                        <h2 class="card-title">Create New Room</h2>
+                        <p class="card-subtitle">Start a fresh conversation</p>
+                    </div>
+                </div>
+
+                <form id="createRoomForm">
+                    <div class="form-group">
+                        <label class="form-label">Your Display Name</label>
+                        <div class="input-group">
+                            <input 
+                                type="text" 
+                                class="input" 
+                                id="createUsername"
+                                placeholder="e.g., swift_fox_321"
+                                maxlength="30"
+                                required
+                            >
+                            <button type="button" class="btn-small" onclick="generateUsername('createUsername')">
+                                <i class="fas fa-random"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Room Settings</label>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="enableAI" class="checkbox">
+                            <label for="enableAI" class="checkbox-label">Enable AI Assistant in room</label>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="roomLock" class="checkbox">
+                            <label for="roomLock" class="checkbox-label">Lock room after creation</label>
+                        </div>
+                    </div>
+
+                    <div class="info-box">
+                        <div class="info-icon">
+                            <i class="fas fa-info-circle"></i>
+                        </div>
+                        <p class="info-text">
+                            Room creator becomes temporary admin with control over that room only.
+                        </p>
+                    </div>
+
+                    <button type="button" class="btn-full btn-create" onclick="createRoom()">
+                        <i class="fas fa-rocket"></i>
+                        Create Room & Get Admin Access
+                    </button>
+                </form>
+            </div>
+
+            <!-- Join Room Card -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon icon-join">
+                        <i class="fas fa-sign-in-alt"></i>
+                    </div>
+                    <div>
+                        <h2 class="card-title">Join Existing Room</h2>
+                        <p class="card-subtitle">Enter a room ID or use invite link</p>
+                    </div>
+                </div>
+
+                <form id="joinRoomForm">
+                    <div class="form-group">
+                        <label class="form-label">Your Display Name</label>
+                        <div class="input-group">
+                            <input 
+                                type="text" 
+                                class="input" 
+                                id="joinUsername"
+                                placeholder="e.g., calm_panda_456"
+                                maxlength="30"
+                                required
+                            >
+                            <button type="button" class="btn-small" onclick="generateUsername('joinUsername')">
+                                <i class="fas fa-random"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Room ID</label>
+                        <input 
+                            type="text" 
+                            class="input input-room-id" 
+                            id="roomId"
+                            placeholder="e.g., ABC123"
+                            maxlength="6"
+                            required
+                        >
+                        <p class="card-subtitle" style="margin-top: 0.5rem;">
+                            Ask your friend for the 6-character Room ID
+                        </p>
+                    </div>
+
+                    <div class="divider">
+                        <span class="divider-text">OR</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Invite Link</label>
+                        <div class="input-group">
+                            <input 
+                                type="text" 
+                                class="input" 
+                                id="inviteLink"
+                                placeholder="Paste invite link here"
+                            >
+                            <button type="button" class="btn-small" onclick="extractRoomId()">
+                                <i class="fas fa-link"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn-full btn-join" onclick="joinRoom()">
+                        <i class="fas fa-door-open"></i>
+                        Join Room Anonymously
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Features Section -->
+        <section class="features">
+            <h2 class="section-title">How It Works</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #3B82F6, #60A5FA);">
+                        <i class="fas fa-user-shield"></i>
+                    </div>
+                    <h3 class="feature-title">Temporary Admin</h3>
+                    <p class="feature-description">
+                        Room creator becomes temporary admin with powers to delete messages, clear chat, and manage users in that room only.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #8B5CF6, #A78BFA);">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h3 class="feature-title">AI Assistant</h3>
+                    <p class="feature-description">
+                        Optional AI chat assistant in each room. Room admin can toggle AI on/off. Ask questions and get instant replies.
+                    </p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon" style="background: linear-gradient(135deg, #EF4444, #F87171);">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3 class="feature-title">Global Admin</h3>
+                    <p class="feature-description">
+                        System-wide admin with full control. Can delete any room, manage all users, and enable maintenance mode for entire platform.
+                    </p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p class="footer-text">
+            <i class="fas fa-lock"></i>
+            All chats are anonymous. No personal data is stored permanently.
+        </p>
+        <p>Rooms auto-expire after 24 hours of inactivity.</p>
+    </footer>
+
+    <!-- Loading Modal -->
+    <div class="loading-overlay" id="loadingModal">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <p class="loading-text">Creating Room...</p>
+        </div>
+    </div>
+
+    <!-- Room Created Modal -->
+    <div class="modal-overlay" id="roomCreatedModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-icon">
+                    <i class="fas fa-check"></i>
+                </div>
+                <div>
+                    <h2 class="modal-title">Room Created Successfully!</h2>
+                    <p class="modal-subtitle">You are now the temporary admin of this room</p>
+                </div>
+            </div>
+
+            <div class="modal-input-group">
+                <label class="form-label">Room ID (Share with friends)</label>
+                <div class="input-group">
+                    <input 
+                        type="text" 
+                        class="modal-input modal-input-readonly" 
+                        id="createdRoomId"
+                        readonly
+                    >
+                    <button class="btn btn-small btn-copy" onclick="copyRoomId()">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="modal-input-group">
+                <label class="form-label">Invite Link</label>
+                <div class="input-group">
+                    <input 
+                        type="text" 
+                        class="modal-input" 
+                        id="inviteLinkDisplay"
+                        readonly
+                    >
+                    <button class="btn btn-small btn-copy" onclick="copyInviteLink()">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="info-box" style="background: rgba(245, 158, 11, 0.1);">
+                <div class="info-icon">
+                    <i class="fas fa-key"></i>
+                </div>
+                <div>
+                    <p class="info-text" style="font-weight: 600; color: var(--warning);">
+                        Admin Access Token
+                    </p>
+                    <p class="info-text" style="margin-top: 0.25rem;">
+                        Save this token to maintain admin access if you refresh the page:
+                    </p>
+                    <p class="info-text" id="adminTokenDisplay" style="font-family: monospace; font-size: 0.6875rem; margin-top: 0.5rem;">
+                        Loading...
+                    </p>
+                </div>
+            </div>
+
+            <div class="modal-buttons">
+                <button class="btn btn-copy" onclick="enterCreatedRoom()">
+                    <i class="fas fa-arrow-right"></i>
+                    Enter Room as Admin
+                </button>
+                <button class="btn btn-close" onclick="closeRoomModal()">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="./js/home.js"></script>
+</body>
+</html>

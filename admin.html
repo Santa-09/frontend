@@ -1,0 +1,1762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Anonymous Chat Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366F1;
+            --primary-dark: #4F46E5;
+            --secondary: #8B5CF6;
+            --accent: #EC4899;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --info: #3B82F6;
+            --bg-primary: #FAFBFC;
+            --bg-secondary: #F3F4F6;
+            --card-bg: #FFFFFF;
+            --text-primary: #1F2937;
+            --text-secondary: #6B7280;
+            --text-muted: #9CA3AF;
+            --border: #E5E7EB;
+            --shadow: rgba(0, 0, 0, 0.05);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+        }
+
+        body.dark-mode {
+            --bg-primary: #111827;
+            --bg-secondary: #1F2937;
+            --card-bg: #374151;
+            --text-primary: #F9FAFB;
+            --text-secondary: #D1D5DB;
+            --text-muted: #9CA3AF;
+            --border: #4B5563;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+
+        /* Admin Header */
+        .admin-header {
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .back-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-sm);
+            border: none;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .admin-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .admin-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-md);
+            background: linear-gradient(135deg, var(--danger), #F97316);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.25rem;
+        }
+
+        .admin-title-group h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .admin-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--danger);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .admin-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.875rem;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: var(--radius-md);
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--danger);
+        }
+
+        .btn {
+            padding: 0.75rem 1.25rem;
+            border: none;
+            border-radius: var(--radius-md);
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        .theme-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-sm);
+            border: none;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .theme-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Login Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal {
+            background: var(--card-bg);
+            border-radius: var(--radius-xl);
+            padding: 2.5rem;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.4s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-md);
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: var(--danger);
+        }
+
+        .modal-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .modal-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-lg);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        .input:focus {
+            outline: none;
+            border-color: var(--danger);
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+        }
+
+        .input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .warning-box {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: var(--radius-lg);
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .warning-icon {
+            color: var(--warning);
+            font-size: 1.125rem;
+            flex-shrink: 0;
+            margin-top: 0.125rem;
+        }
+
+        .warning-text {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .warning-text strong {
+            color: var(--warning);
+            font-weight: 600;
+        }
+
+        .btn-full {
+            width: 100%;
+            padding: 1rem;
+            border-radius: var(--radius-lg);
+            font-size: 1rem;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--danger), #F97316);
+            color: white;
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(239, 68, 68, 0.4);
+        }
+
+        /* Admin Dashboard */
+        .admin-dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            display: none;
+        }
+
+        .admin-dashboard.active {
+            display: block;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px var(--shadow);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px var(--shadow);
+            border-color: var(--primary);
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .stat-title {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .icon-rooms {
+            background: linear-gradient(135deg, var(--info), #60A5FA);
+        }
+
+        .icon-users {
+            background: linear-gradient(135deg, var(--success), #34D399);
+        }
+
+        .icon-messages {
+            background: linear-gradient(135deg, var(--secondary), #A78BFA);
+        }
+
+        .icon-system {
+            background: linear-gradient(135deg, var(--danger), #F97316);
+        }
+
+        .stat-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-details {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .stat-highlight {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        /* Main Layout */
+        .dashboard-layout {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+        }
+
+        /* Tables */
+        .table-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            box-shadow: 0 4px 20px var(--shadow);
+            margin-bottom: 1.5rem;
+        }
+
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-secondary);
+        }
+
+        .table-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .table-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-sm {
+            padding: 0.5rem 0.875rem;
+            font-size: 0.75rem;
+        }
+
+        .btn-refresh {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-refresh:hover {
+            background: var(--border);
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .table thead {
+            background: var(--bg-secondary);
+        }
+
+        .table th {
+            padding: 1rem 1.5rem;
+            text-align: left;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .table td {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.875rem;
+            color: var(--text-primary);
+        }
+
+        .table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .table tr:hover {
+            background: var(--bg-secondary);
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .status-active {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+        }
+
+        .status-inactive {
+            background: rgba(107, 114, 128, 0.1);
+            color: var(--text-muted);
+        }
+
+        .table-actions-cell {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .action-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-sm);
+            border: none;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .action-btn.danger:hover {
+            background: var(--danger);
+        }
+
+        /* Sidebar */
+        .admin-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px var(--shadow);
+        }
+
+        .section-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+
+        .actions-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .action-btn-large {
+            padding: 1rem;
+            border: none;
+            border-radius: var(--radius-lg);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+
+        .action-warning {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .action-warning:hover {
+            background: rgba(245, 158, 11, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .action-info {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--info);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .action-info:hover {
+            background: rgba(59, 130, 246, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .action-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .action-success:hover {
+            background: rgba(16, 185, 129, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .action-secondary {
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--secondary);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+
+        .action-secondary:hover {
+            background: rgba(139, 92, 246, 0.2);
+            transform: translateY(-2px);
+        }
+
+        /* System Status */
+        .system-status {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px var(--shadow);
+        }
+
+        .status-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-md);
+        }
+
+        .status-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .status-value {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .status-healthy {
+            color: var(--success);
+        }
+
+        /* Chart Container */
+        .chart-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px var(--shadow);
+        }
+
+        .chart-placeholder {
+            height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        /* Admin Modals */
+        .admin-modal {
+            max-width: 500px;
+        }
+
+        .textarea {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-lg);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.875rem;
+            resize: vertical;
+            min-height: 100px;
+            transition: all 0.2s;
+        }
+
+        .textarea:focus {
+            outline: none;
+            border-color: var(--warning);
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin: 1rem 0;
+        }
+
+        .checkbox-label {
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+
+        .checkbox {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            border: 2px solid var(--border);
+            background: var(--bg-secondary);
+            cursor: pointer;
+            appearance: none;
+            position: relative;
+        }
+
+        .checkbox:checked {
+            background: var(--warning);
+            border-color: var(--warning);
+        }
+
+        .checkbox:checked::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 0.75rem;
+            font-weight: bold;
+        }
+
+        .select {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-lg);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.875rem;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 12px;
+        }
+
+        .select:focus {
+            outline: none;
+            border-color: var(--success);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .hidden-field {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 0.875rem;
+            border: none;
+            border-radius: var(--radius-md);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .modal-btn.cancel {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .modal-btn.cancel:hover {
+            background: var(--border);
+        }
+
+        .modal-btn.apply {
+            background: linear-gradient(135deg, var(--warning), #FBBF24);
+            color: white;
+        }
+
+        .modal-btn.apply:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+        }
+
+        .modal-btn.send {
+            background: linear-gradient(135deg, var(--success), #34D399);
+            color: white;
+        }
+
+        .modal-btn.send:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        /* Empty States */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-muted);
+        }
+
+        .empty-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .empty-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-text {
+            font-size: 0.875rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .dashboard-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .admin-header {
+                padding: 1rem;
+            }
+
+            .admin-dashboard {
+                padding: 1rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .table-container {
+                overflow-x: auto;
+            }
+
+            .table {
+                min-width: 800px;
+            }
+
+            .modal {
+                padding: 1.5rem;
+                margin: 1rem;
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Admin Header -->
+    <header class="admin-header">
+        <div class="header-left">
+            <a href="index.html" class="back-btn">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <div class="admin-info">
+                <div class="admin-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <div class="admin-title-group">
+                    <h1>Global Admin Panel</h1>
+                    <div class="admin-status">
+                        <span class="status-dot"></span>
+                        <span id="adminStatusText">Offline</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="header-right">
+            <div class="admin-badge hidden" id="adminBadge">
+                <i class="fas fa-user-shield"></i>
+                <span id="adminUsername">Not Logged In</span>
+            </div>
+            <button class="btn btn-secondary" onclick="logoutAdmin()">
+                <i class="fas fa-sign-out-alt"></i>
+                Logout
+            </button>
+            <button class="theme-btn" id="themeToggle">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Login Modal -->
+    <div class="modal-overlay" id="adminLoginModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <div>
+                    <h2 class="modal-title">Global Admin Login</h2>
+                    <p class="modal-subtitle">Full system control access</p>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Username</label>
+                <input 
+                    type="text" 
+                    class="input" 
+                    id="adminLoginUsername"
+                    placeholder="Enter admin username"
+                >
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <input 
+                    type="password" 
+                    class="input" 
+                    id="adminLoginPassword"
+                    placeholder="Enter admin password"
+                >
+            </div>
+
+            <div class="warning-box">
+                <div class="warning-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="warning-text">
+                    <strong>Warning:</strong> Admin access provides full control over all rooms, users, and system settings. Use with caution.
+                </div>
+            </div>
+
+            <button class="btn-full btn-danger" onclick="loginAdmin()" id="adminLoginBtn">
+                <i class="fas fa-lock"></i>
+                Login as Global Admin
+            </button>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <main class="admin-dashboard" id="adminDashboard">
+        <!-- Stats Overview -->
+        <div class="stats-grid">
+            <!-- Total Rooms -->
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div>
+                        <div class="stat-title">Total Rooms</div>
+                        <div class="stat-value" id="statRooms">0</div>
+                    </div>
+                    <div class="stat-icon icon-rooms">
+                        <i class="fas fa-door-open"></i>
+                    </div>
+                </div>
+                <div class="stat-details">
+                    <span id="statActiveRooms">0</span> active • 
+                    <span id="statNewRooms24h">0</span> new in 24h
+                </div>
+            </div>
+
+            <!-- Total Users -->
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div>
+                        <div class="stat-title">Total Users</div>
+                        <div class="stat-value" id="statUsers">0</div>
+                    </div>
+                    <div class="stat-icon icon-users">
+                        <i class="fas fa-users"></i>
+                    </div>
+                </div>
+                <div class="stat-details">
+                    <span id="statOnlineUsers">0</span> online • 
+                    <span id="statRoomAdmins">0</span> room admins
+                </div>
+            </div>
+
+            <!-- Total Messages -->
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div>
+                        <div class="stat-title">Total Messages</div>
+                        <div class="stat-value" id="statMessages">0</div>
+                    </div>
+                    <div class="stat-icon icon-messages">
+                        <i class="fas fa-comments"></i>
+                    </div>
+                </div>
+                <div class="stat-details">
+                    <span id="statMessages24h">0</span> in 24h • 
+                    <span id="statAIMessages">0</span> AI responses
+                </div>
+            </div>
+
+            <!-- System Health -->
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div>
+                        <div class="stat-title">System Health</div>
+                        <div class="stat-value" id="statUptime">0h</div>
+                    </div>
+                    <div class="stat-icon icon-system">
+                        <i class="fas fa-heartbeat"></i>
+                    </div>
+                </div>
+                <div class="stat-details">
+                    Memory: <span id="statMemory">0MB</span> • 
+                    Status: <span class="stat-highlight" style="color: var(--success);">Healthy</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="dashboard-layout">
+            <!-- Left Column -->
+            <div class="left-column">
+                <!-- Rooms Table -->
+                <div class="table-container">
+                    <div class="table-header">
+                        <h3 class="table-title">All Rooms</h3>
+                        <div class="table-actions">
+                            <button class="btn btn-sm btn-refresh" onclick="refreshRooms()">
+                                <i class="fas fa-sync-alt"></i>
+                                Refresh
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Room ID</th>
+                                    <th>Created By</th>
+                                    <th>Users</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="roomsTableBody">
+                                <tr>
+                                    <td colspan="5">
+                                        <div class="empty-state" style="padding: 2rem;">
+                                            <div class="empty-icon">
+                                                <i class="fas fa-door-closed"></i>
+                                            </div>
+                                            <p class="empty-text">No rooms found</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Users Table -->
+                <div class="table-container">
+                    <div class="table-header">
+                        <h3 class="table-title">Active Users</h3>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Room</th>
+                                    <th>Role</th>
+                                    <th>Last Active</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody">
+                                <tr>
+                                    <td colspan="5">
+                                        <div class="empty-state" style="padding: 2rem;">
+                                            <div class="empty-icon">
+                                                <i class="fas fa-users-slash"></i>
+                                            </div>
+                                            <p class="empty-text">No active users</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="admin-sidebar">
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <h3 class="section-title">Quick Actions</h3>
+                    <div class="actions-grid">
+                        <button class="action-btn-large action-warning" onclick="showMaintenanceModal()">
+                            <i class="fas fa-tools"></i>
+                            Maintenance Mode
+                        </button>
+                        <button class="action-btn-large action-info" onclick="refreshAllData()">
+                            <i class="fas fa-sync-alt"></i>
+                            Refresh All Data
+                        </button>
+                        <button class="action-btn-large action-success" onclick="showBroadcastModal()">
+                            <i class="fas fa-bullhorn"></i>
+                            Broadcast Message
+                        </button>
+                        <button class="action-btn-large action-secondary" onclick="showRoomSearch()">
+                            <i class="fas fa-search"></i>
+                            Search Room
+                        </button>
+                    </div>
+                </div>
+
+                <!-- System Status -->
+                <div class="system-status">
+                    <h3 class="section-title">System Status</h3>
+                    <div class="status-grid">
+                        <div class="status-item">
+                            <span class="status-label">WebSocket Connections</span>
+                            <span class="status-value" id="statusWsConnections">0</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">API Rate Limit</span>
+                            <span class="status-value">Normal</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">AI Service</span>
+                            <span class="status-value status-healthy">Active</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Database</span>
+                            <span class="status-value">In-Memory</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chart -->
+                <div class="chart-container">
+                    <h3 class="section-title">Activity Chart</h3>
+                    <div class="chart-placeholder">
+                        Activity chart will be displayed here
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modals -->
+    <!-- Room Details Modal -->
+    <div class="modal-overlay hidden" id="roomDetailsModal">
+        <div class="modal admin-modal">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 class="modal-title">Room Details</h2>
+                <button class="action-btn" onclick="closeRoomDetails()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="roomDetailsContent">
+                <!-- Room details will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Maintenance Modal -->
+    <div class="modal-overlay hidden" id="maintenanceModal">
+        <div class="modal admin-modal">
+            <h2 class="modal-title">Maintenance Mode</h2>
+            
+            <div class="form-group">
+                <label class="form-label">Maintenance Message</label>
+                <textarea 
+                    class="textarea"
+                    id="maintenanceMessage"
+                    placeholder="Enter maintenance message..."
+                    rows="3"
+                ></textarea>
+            </div>
+            
+            <div class="checkbox-container">
+                <input type="checkbox" id="enableMaintenance" class="checkbox">
+                <label for="enableMaintenance" class="checkbox-label">Enable Maintenance Mode</label>
+            </div>
+            
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" onclick="closeMaintenanceModal()">
+                    Cancel
+                </button>
+                <button class="modal-btn apply" onclick="applyMaintenance()">
+                    Apply
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Broadcast Modal -->
+    <div class="modal-overlay hidden" id="broadcastModal">
+        <div class="modal admin-modal">
+            <h2 class="modal-title">Broadcast Message</h2>
+            
+            <div class="form-group">
+                <label class="form-label">Message</label>
+                <textarea 
+                    class="textarea"
+                    id="broadcastMessage"
+                    placeholder="Enter broadcast message..."
+                    rows="3"
+                ></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Target</label>
+                <select id="broadcastTarget" class="select">
+                    <option value="all">All Rooms</option>
+                    <option value="specific">Specific Room</option>
+                </select>
+            </div>
+            
+            <div class="form-group hidden-field" id="specificRoomField">
+                <input 
+                    type="text" 
+                    class="input" 
+                    id="broadcastRoomId"
+                    placeholder="Enter Room ID"
+                >
+            </div>
+            
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" onclick="closeBroadcastModal()">
+                    Cancel
+                </button>
+                <button class="modal-btn send" onclick="sendBroadcast()">
+                    Send
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let isAdminLoggedIn = false;
+        let rooms = [];
+        let users = [];
+
+        // Initialize
+        window.addEventListener('DOMContentLoaded', () => {
+            setupEventListeners();
+            loadSampleData();
+        });
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Theme toggle
+            document.getElementById('themeToggle').addEventListener('click', () => {
+                document.body.classList.toggle('dark-mode');
+                localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+            });
+
+            // Load theme
+            if (localStorage.getItem('theme') === 'dark') {
+                document.body.classList.add('dark-mode');
+            }
+
+            // Broadcast target change
+            document.getElementById('broadcastTarget').addEventListener('change', (e) => {
+                const specificField = document.getElementById('specificRoomField');
+                if (e.target.value === 'specific') {
+                    specificField.classList.remove('hidden');
+                } else {
+                    specificField.classList.add('hidden');
+                }
+            });
+        }
+
+        // Login admin
+        function loginAdmin() {
+            const username = document.getElementById('adminLoginUsername').value.trim();
+            const password = document.getElementById('adminLoginPassword').value.trim();
+            
+            if (!username || !password) {
+                alert('Please enter username and password');
+                return;
+            }
+            
+            // Simulate authentication
+            if (username === 'admin' && password === 'admin123') {
+                isAdminLoggedIn = true;
+                
+                // Update UI
+                document.getElementById('adminStatusText').textContent = 'Online';
+                document.getElementById('adminUsername').textContent = username;
+                document.getElementById('adminBadge').classList.remove('hidden');
+                document.getElementById('adminLoginModal').classList.add('hidden');
+                document.getElementById('adminDashboard').classList.add('active');
+                
+                // Load data
+                loadSampleData();
+            } else {
+                alert('Invalid credentials');
+            }
+        }
+
+        // Logout admin
+        function logoutAdmin() {
+            isAdminLoggedIn = false;
+            
+            // Reset UI
+            document.getElementById('adminStatusText').textContent = 'Offline';
+            document.getElementById('adminBadge').classList.add('hidden');
+            document.getElementById('adminDashboard').classList.remove('active');
+            document.getElementById('adminLoginModal').classList.remove('hidden');
+            
+            // Clear inputs
+            document.getElementById('adminLoginUsername').value = '';
+            document.getElementById('adminLoginPassword').value = '';
+        }
+
+        // Load sample data
+        function loadSampleData() {
+            // Sample rooms data
+            rooms = [
+                { id: 'ABC123', createdBy: 'swift_fox_321', users: 3, status: 'active', createdAt: '2024-01-15 14:30' },
+                { id: 'DEF456', createdBy: 'calm_panda_456', users: 2, status: 'active', createdAt: '2024-01-15 12:15' },
+                { id: 'GHI789', createdBy: 'mysterious_fox_42', users: 1, status: 'inactive', createdAt: '2024-01-14 18:45' },
+                { id: 'JKL012', createdBy: 'silent_panda_89', users: 4, status: 'active', createdAt: '2024-01-15 10:20' }
+            ];
+
+            // Sample users data
+            users = [
+                { username: 'swift_fox_321', room: 'ABC123', role: 'admin', lastActive: 'Just now' },
+                { username: 'calm_panda_456', room: 'DEF456', role: 'user', lastActive: '5 min ago' },
+                { username: 'mysterious_fox_42', room: 'ABC123', role: 'user', lastActive: '10 min ago' },
+                { username: 'silent_panda_89', room: 'JKL012', role: 'admin', lastActive: '15 min ago' }
+            ];
+
+            // Update stats
+            updateStats();
+            renderRoomsTable();
+            renderUsersTable();
+        }
+
+        // Update statistics
+        function updateStats() {
+            document.getElementById('statRooms').textContent = rooms.length;
+            document.getElementById('statActiveRooms').textContent = rooms.filter(r => r.status === 'active').length;
+            document.getElementById('statNewRooms24h').textContent = 2; // Sample data
+            
+            document.getElementById('statUsers').textContent = users.length;
+            document.getElementById('statOnlineUsers').textContent = users.length;
+            document.getElementById('statRoomAdmins').textContent = users.filter(u => u.role === 'admin').length;
+            
+            document.getElementById('statMessages').textContent = '1,234';
+            document.getElementById('statMessages24h').textContent = '156';
+            document.getElementById('statAIMessages').textContent = '89';
+            
+            document.getElementById('statUptime').textContent = '12h';
+            document.getElementById('statMemory').textContent = '256MB';
+            
+            document.getElementById('statusWsConnections').textContent = users.length;
+        }
+
+        // Render rooms table
+        function renderRoomsTable() {
+            const tbody = document.getElementById('roomsTableBody');
+            
+            if (rooms.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5">
+                            <div class="empty-state" style="padding: 2rem;">
+                                <div class="empty-icon">
+                                    <i class="fas fa-door-closed"></i>
+                                </div>
+                                <p class="empty-text">No rooms found</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = rooms.map(room => `
+                <tr>
+                    <td style="font-family: 'Space Grotesk', monospace; font-weight: 600;">${room.id}</td>
+                    <td>${room.createdBy}</td>
+                    <td>${room.users}</td>
+                    <td>
+                        <span class="status-badge ${room.status === 'active' ? 'status-active' : 'status-inactive'}">
+                            ${room.status === 'active' ? 'Active' : 'Inactive'}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="table-actions-cell">
+                            <button class="action-btn" title="View Details" onclick="showRoomDetails('${room.id}')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="action-btn danger" title="Delete Room" onclick="deleteRoom('${room.id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Render users table
+        function renderUsersTable() {
+            const tbody = document.getElementById('usersTableBody');
+            
+            if (users.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5">
+                            <div class="empty-state" style="padding: 2rem;">
+                                <div class="empty-icon">
+                                    <i class="fas fa-users-slash"></i>
+                                </div>
+                                <p class="empty-text">No active users</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = users.map(user => `
+                <tr>
+                    <td>${user.username}</td>
+                    <td style="font-family: 'Space Grotesk', monospace; font-weight: 600;">${user.room}</td>
+                    <td>
+                        <span class="status-badge ${user.role === 'admin' ? 'status-active' : 'status-inactive'}">
+                            ${user.role === 'admin' ? 'Admin' : 'User'}
+                        </span>
+                    </td>
+                    <td>${user.lastActive}</td>
+                    <td>
+                        <div class="table-actions-cell">
+                            <button class="action-btn" title="Kick User" onclick="kickUser('${user.username}')">
+                                <i class="fas fa-user-slash"></i>
+                            </button>
+                            <button class="action-btn danger" title="Ban User" onclick="banUser('${user.username}')">
+                                <i class="fas fa-ban"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Show room details
+        function showRoomDetails(roomId) {
+            const room = rooms.find(r => r.id === roomId);
+            if (!room) return;
+            
+            const content = document.getElementById('roomDetailsContent');
+            content.innerHTML = `
+                <div style="margin-bottom: 1.5rem;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div>
+                            <div class="stat-label">Room ID</div>
+                            <div style="font-family: 'Space Grotesk', monospace; font-size: 1.25rem; font-weight: 600;">${room.id}</div>
+                        </div>
+                        <div>
+                            <div class="stat-label">Status</div>
+                            <span class="status-badge ${room.status === 'active' ? 'status-active' : 'status-inactive'}">
+                                ${room.status === 'active' ? 'Active' : 'Inactive'}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div>
+                            <div class="stat-label">Created By</div>
+                            <div>${room.createdBy}</div>
+                        </div>
+                        <div>
+                            <div class="stat-label">Current Users</div>
+                            <div>${room.users}</div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 1rem;">
+                        <div class="stat-label">Created At</div>
+                        <div>${room.createdAt}</div>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 0.75rem;">
+                    <button class="modal-btn cancel" style="flex: 1;" onclick="closeRoomDetails()">
+                        Close
+                    </button>
+                    <button class="modal-btn apply" style="flex: 1;" onclick="forceDeleteRoom('${room.id}')">
+                        <i class="fas fa-trash"></i>
+                        Force Delete
+                    </button>
+                </div>
+            `;
+            
+            document.getElementById('roomDetailsModal').classList.remove('hidden');
+        }
+
+        // Close room details
+        function closeRoomDetails() {
+            document.getElementById('roomDetailsModal').classList.add('hidden');
+        }
+
+        // Refresh rooms
+        function refreshRooms() {
+            // Simulate loading
+            const btn = document.querySelector('.btn-refresh');
+            const originalIcon = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+            btn.disabled = true;
+            
+            setTimeout(() => {
+                loadSampleData();
+                btn.innerHTML = originalIcon;
+                btn.disabled = false;
+                alert('Rooms refreshed successfully!');
+            }, 1000);
+        }
+
+        // Refresh all data
+        function refreshAllData() {
+            const btn = document.querySelector('.action-info');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Refreshing...';
+            btn.disabled = true;
+            
+            setTimeout(() => {
+                loadSampleData();
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                alert('All data refreshed successfully!');
+            }, 1500);
+        }
+
+        // Show maintenance modal
+        function showMaintenanceModal() {
+            document.getElementById('maintenanceModal').classList.remove('hidden');
+        }
+
+        // Close maintenance modal
+        function closeMaintenanceModal() {
+            document.getElementById('maintenanceModal').classList.add('hidden');
+        }
+
+        // Apply maintenance
+        function applyMaintenance() {
+            const message = document.getElementById('maintenanceMessage').value;
+            const enabled = document.getElementById('enableMaintenance').checked;
+            
+            if (enabled && !message.trim()) {
+                alert('Please enter a maintenance message');
+                return;
+            }
+            
+            if (enabled) {
+                alert(`Maintenance mode enabled with message: "${message}"`);
+            } else {
+                alert('Maintenance mode disabled');
+            }
+            
+            closeMaintenanceModal();
+        }
+
+        // Show broadcast modal
+        function showBroadcastModal() {
+            document.getElementById('broadcastModal').classList.remove('hidden');
+        }
+
+        // Close broadcast modal
+        function closeBroadcastModal() {
+            document.getElementById('broadcastModal').classList.add('hidden');
+            document.getElementById('broadcastMessage').value = '';
+            document.getElementById('broadcastRoomId').value = '';
+            document.getElementById('broadcastTarget').value = 'all';
+            document.getElementById('specificRoomField').classList.add('hidden');
+        }
+
+        // Send broadcast
+        function sendBroadcast() {
+            const message = document.getElementById('broadcastMessage').value.trim();
+            const target = document.getElementById('broadcastTarget').value;
+            const roomId = document.getElementById('broadcastRoomId').value.trim();
+            
+            if (!message) {
+                alert('Please enter a broadcast message');
+                return;
+            }
+            
+            if (target === 'specific' && !roomId) {
+                alert('Please enter a room ID');
+                return;
+            }
+            
+            const targetText = target === 'all' ? 'all rooms' : `room ${roomId}`;
+            alert(`Broadcast sent to ${targetText}: "${message}"`);
+            
+            closeBroadcastModal();
+        }
+
+        // Show room search
+        function showRoomSearch() {
+            const roomId = prompt('Enter Room ID to search:');
+            if (roomId) {
+                const room = rooms.find(r => r.id === roomId.toUpperCase());
+                if (room) {
+                    showRoomDetails(roomId.toUpperCase());
+                } else {
+                    alert(`Room ${roomId} not found`);
+                }
+            }
+        }
+
+        // Delete room
+        function deleteRoom(roomId) {
+            if (confirm(`Are you sure you want to delete room ${roomId}?`)) {
+                rooms = rooms.filter(r => r.id !== roomId);
+                renderRoomsTable();
+                updateStats();
+                alert(`Room ${roomId} deleted successfully`);
+            }
+        }
+
+        // Force delete room
+        function forceDeleteRoom(roomId) {
+            if (confirm(`Force delete room ${roomId}? This action cannot be undone.`)) {
+                rooms = rooms.filter(r => r.id !== roomId);
+                renderRoomsTable();
+                updateStats();
+                closeRoomDetails();
+                alert(`Room ${roomId} force deleted`);
+            }
+        }
+
+        // Kick user
+        function kickUser(username) {
+            if (confirm(`Kick user ${username} from the system?`)) {
+                users = users.filter(u => u.username !== username);
+                renderUsersTable();
+                updateStats();
+                alert(`User ${username} kicked successfully`);
+            }
+        }
+
+        // Ban user
+        function banUser(username) {
+            if (confirm(`Ban user ${username} permanently?`)) {
+                users = users.filter(u => u.username !== username);
+                renderUsersTable();
+                updateStats();
+                alert(`User ${username} banned permanently`);
+            }
+        }
+
+        // Show login modal on load
+        window.addEventListener('DOMContentLoaded', () => {
+            // Auto-show login modal
+            document.getElementById('adminLoginModal').classList.remove('hidden');
+            
+            // Pre-fill demo credentials
+            document.getElementById('adminLoginUsername').value = 'admin';
+            document.getElementById('adminLoginPassword').value = 'admin123';
+        });
+    </script>
+</body>
+</html>
